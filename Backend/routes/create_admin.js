@@ -1,0 +1,49 @@
+import express from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import pool from "../config/db.js";
+
+const router = express.Router();
+
+// Helper to create a JWT
+const createToken = (user) =>
+  jwt.sign(
+    { user_id: user.user_id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+  );
+
+const email = "mukamugishapadmin@gmail.com"
+const password = "Maker20@"
+const name ="Mukamugisha Pascaline"
+const phone = "0799398833"
+// POST /api/auth/register
+export default async function createAdmin() {
+  try {
+    
+    if (!name || !email || !phone || !password) {
+      console.log({ message: "All fields are required" });
+    }
+
+    const existing = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    if (existing.rows.length > 0) {
+      console.log({ message: "Email is already registered" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+      `INSERT INTO users (name, email, phone, password, role)
+       VALUES ($1, $2, $3, $4, 'admin')
+       RETURNING user_id, name, email, phone, role`,
+      [name, email, phone, hashedPassword]
+    );
+
+    const user = result.rows[0];
+    const token = createToken(user);
+    console.log({ user, token });
+  } catch (err) {
+    console.error(err);
+    console.log({ message: "Server error during registration" });
+  }
+}

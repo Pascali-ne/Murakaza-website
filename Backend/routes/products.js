@@ -1,8 +1,63 @@
 import express from "express";
 import pool from "../config/db.js";
 import { protect, adminOnly } from "../middleware/auth.js";
+import path from "node:path"
+import multer from "multer";
+import fs from "node:fs"
 
 const router = express.Router();
+
+const uploadStorage = path.join(path.resolve(), "uploads");
+
+// create upload folder if not exists
+
+if(!fs.existsSync(uploadStorage)){
+  fs.mkdirSync(uploadStorage, { recursive: true });
+}
+
+const MulterDiskStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadStorage);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + "-" + file.originalname);
+  },
+});
+
+const upload = multer({
+  storage: MulterDiskStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // Limit to 5MB
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return cb(new Error("Only image files are allowed"));
+    }
+
+    cb(null, true);
+  },
+});
+
+// POST /api/products/upload-image — admin only, upload a product photo to Cloudinary
+// Send as multipart/form-data with a single field named "image".
+// Returns { url } which can then be saved as a product's image_url.
+router.post("/upload-image", protect, adminOnly, upload.single("image"), async (req, res) => {
+  try {
+
+    // Check if file is uploaded.
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const bind_application_url_to_uploaded_file = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
+    return res.status(200).json({ url: bind_application_url_to_uploaded_file });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error uploading image" });
+  }
+});
 
 // GET /api/products?category=student_supplies&search=book
 router.get("/", async (req, res) => {
