@@ -29,9 +29,11 @@ export default function Footer() {
         <div>
           <h4 className="font-semibold mb-3">Contact</h4>
           <ul className="space-y-2 text-sm text-gray-300">
-            <li className="flex items-center gap-2"><Phone size={16} /> +250 7XX XXX XXX</li>
-            <li className="flex items-center gap-2"><Mail size={16} /> info@murakaza.rw</li>
-            <li className="flex items-center gap-2"><MapPin size={16} /> Kigali, Rwanda</li>
+            <li className="flex items-center gap-2"><Phone size={16} /> +250 799 398 833</li>
+            <li className="flex items-center gap-2"><Phone size={16} /> +250 787 946 965</li>
+            <li className="flex items-center gap-2"><Phone size={16} /> +250 788 286 577</li>
+            <li className="flex items-center gap-2"><Mail size={16} /> mukamugishapascaline@gmail.com</li>
+            <li className="flex items-start gap-2"><MapPin size={16} className="shrink-0 mt-1" /> Kigali, Nyarugenge, Nyakabanda, Munanira II, Gasiza Village</li>
           </ul>
         </div>
       </div>

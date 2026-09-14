@@ -63,19 +63,24 @@ export default function Navbar() {
           </Link>
 
           {user ? (
-            <div className="relative group">
+            <div className="relative   group" onClick={() => setOpen(!open)}>
+              
               <button className="flex items-center gap-1">
                 <User size={20} /> {user.name.split(" ")[0]}
               </button>
-              <div className="hidden group-hover:block absolute right-0 mt-2 bg-white text-gray-800 rounded shadow-lg w-40">
+              {
+                open && (
+                                <div className="absolute block right-0 mt-2 bg-white text-gray-800  rounded shadow-lg w-40"    >
                 <Link to="/profile" className="block px-4 py-2 hover:bg-gray-100">Profile</Link>
                 {user.role === "admin" && (
                   <Link to="/admin" className="block px-4 py-2 hover:bg-gray-100">Admin Dashboard</Link>
-                )}
+                )}  
                 <button onClick={logout} className="block w-full text-left px-4 py-2 hover:bg-gray-100">
                   Logout
                 </button>
               </div>
+                )
+              }
             </div>
           ) : (
             <Link to="/login" className="bg-accent px-4 py-1.5 rounded-full text-sm font-semibold">

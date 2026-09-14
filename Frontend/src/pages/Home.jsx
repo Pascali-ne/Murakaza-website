@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import api from "../api/api.js";
 import ProductCard from "../components/ProductCard.jsx";
+import HeroAnimation from "../components/HeroAnimation.jsx";
 import { BookOpen, Printer, ShieldCheck, Truck } from "lucide-react";
 
 export default function Home() {
@@ -35,7 +36,7 @@ export default function Home() {
               </Link>
             </div>
           </div>
-          <div className="hidden md:block h-72 bg-white/10 rounded-2xl" />
+          <HeroAnimation />
         </div>
       </section>
 

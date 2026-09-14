@@ -10,16 +10,48 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [form, setForm] = useState(emptyProduct);
   const [editingId, setEditingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  const loadProducts = (search = "") => {
+    api.get("/products", { params: search ? { search } : {} }).then((res) => setProducts(res.data));
+  };
 
   const loadAll = () => {
     api.get("/users/report/summary").then((res) => setSummary(res.data));
-    api.get("/products").then((res) => setProducts(res.data));
+    loadProducts(searchTerm);
     api.get("/orders").then((res) => setOrders(res.data));
   };
 
   useEffect(() => { loadAll(); }, []);
 
+  // Debounce the admin product search so it doesn't fire on every keystroke
+  useEffect(() => {
+    const timeout = setTimeout(() => loadProducts(searchTerm), 300);
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadError("");
+    setUploading(true);
+    try {
+      const data = new FormData();
+      data.append("image", file);
+      const res = await api.post("/products/upload-image", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setForm((f) => ({ ...f, image_url: res.data.url }));
+    } catch (err) {
+      setUploadError(err.response?.data?.message || "Image upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,12 +62,14 @@ export default function AdminDashboard() {
     }
     setForm(emptyProduct);
     setEditingId(null);
+    setUploadError("");
     loadAll();
   };
 
   const handleEdit = (p) => {
     setForm(p);
     setEditingId(p.product_id);
+    setUploadError("");
     setTab("products");
   };
 
@@ -108,33 +142,64 @@ export default function AdminDashboard() {
             </select>
             <input name="price" type="number" value={form.price} onChange={handleChange} required placeholder="Price (RWF)" className="border rounded-lg px-4 py-2" />
             <input name="quantity" type="number" value={form.quantity} onChange={handleChange} required placeholder="Stock Quantity" className="border rounded-lg px-4 py-2" />
-            <input name="image_url" value={form.image_url} onChange={handleChange} placeholder="Image URL" className="border rounded-lg px-4 py-2" />
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Product Image</label>
+              <div className="flex items-center gap-3">
+                {form.image_url && (
+                  <img src={form.image_url} alt="Preview" className="w-16 h-16 object-cover rounded-lg border" />
+                )}
+                <label className="border rounded-lg px-4 py-2 text-sm text-gray-600 cursor-pointer hover:bg-gray-50 flex-1 text-center">
+                  {uploading ? "Uploading..." : form.image_url ? "Change photo" : "Upload photo"}
+                  <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploading} className="hidden" />
+                </label>
+              </div>
+              {uploadError && <p className="text-sm text-red-500 mt-1">{uploadError}</p>}
+            </div>
+
             <textarea name="description" value={form.description} onChange={handleChange} placeholder="Description" rows={3} className="border rounded-lg px-4 py-2" />
             <div className="flex gap-2">
-              <button className="bg-primary text-white rounded-full py-2 px-6 font-semibold">
+              <button disabled={uploading} className="bg-primary text-white rounded-full py-2 px-6 font-semibold disabled:opacity-50">
                 {editingId ? "Update Product" : "Add Product"}
               </button>
               {editingId && (
-                <button type="button" onClick={() => { setForm(emptyProduct); setEditingId(null); }} className="text-gray-500">
+                <button type="button" onClick={() => { setForm(emptyProduct); setEditingId(null); setUploadError(""); }} className="text-gray-500">
                   Cancel
                 </button>
               )}
             </div>
           </form>
 
-          <div className="flex flex-col gap-3 max-h-[600px] overflow-y-auto">
-            {products.map((p) => (
-              <div key={p.product_id} className="bg-white rounded-xl shadow p-4 flex justify-between items-center">
-                <div>
-                  <p className="font-semibold text-gray-800">{p.name}</p>
-                  <p className="text-sm text-gray-500">RWF {Number(p.price).toLocaleString()} · {p.quantity} in stock</p>
-                </div>
-                <div className="flex gap-2 text-sm">
-                  <button onClick={() => handleEdit(p)} className="text-primary font-semibold">Edit</button>
-                  <button onClick={() => handleDelete(p.product_id)} className="text-red-500 font-semibold">Delete</button>
-                </div>
-              </div>
-            ))}
+          <div className="flex flex-col gap-3">
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search products by name..."
+              className="border rounded-lg px-4 py-2 bg-white"
+            />
+            <div className="flex flex-col gap-3 max-h-[550px] overflow-y-auto">
+              {products.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">No products found.</p>
+              ) : (
+                products.map((p) => (
+                  <div key={p.product_id} className="bg-white rounded-xl shadow p-4 flex justify-between items-center gap-3">
+                    <div className="flex items-center gap-3">
+                      {p.image_url && (
+                        <img src={p.image_url} alt={p.name} className="w-12 h-12 object-cover rounded-lg border" />
+                      )}
+                      <div>
+                        <p className="font-semibold text-gray-800">{p.name}</p>
+                        <p className="text-sm text-gray-500">RWF {Number(p.price).toLocaleString()} · {p.quantity} in stock</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 text-sm shrink-0">
+                      <button onClick={() => handleEdit(p)} className="text-primary font-semibold">Edit</button>
+                      <button onClick={() => handleDelete(p.product_id)} className="text-red-500 font-semibold">Delete</button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

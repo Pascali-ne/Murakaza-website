@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import api from "../api/api.js";
 import ProductCard from "../components/ProductCard.jsx";
 
-export default function ShopCategory({ category, title }) {
+export default function ShopCategory({ category, title, icon }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
@@ -19,7 +19,9 @@ export default function ShopCategory({ category, title }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">{title}</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
+        {icon && <span className="text-primary">{icon}</span>} {title}
+      </h1>
       <p className="text-gray-500 mb-6">
         {search ? `Search results for "${search}"` : `Browse all ${title.toLowerCase()}`}
       </p>
