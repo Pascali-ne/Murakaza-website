@@ -1,0 +1,19 @@
+{
+  "language": { "prompt": "Hitamo ururimi", "english": "Icyongereza", "kinyarwanda": "Ikinyarwanda" },
+  "nav": {
+    "home": "Ahabanza", "studentSupplies": "Ibikoresho by'Abanyeshuri", "officeEquipment": "Ibikoresho by'Ibiro",
+    "otherServices": "Izindi Serivisi", "about": "Abo Turi Bo", "contact": "Twandikire",
+    "search": "Shakisha ibicuruzwa...", "login": "Injira", "logout": "Sohoka",
+    "profile": "Umwirondoro", "admin": "Ikibaho cy'Ubuyobozi"
+  },
+  "home": {
+    "shopSupplies": "Gura Ibikoresho by'Abanyeshuri", "shopEquipment": "Gura Ibikoresho by'Ibiro",
+    "trustRange": "Ibicuruzwa Byinshi", "trustDelivery": "Kohereza Byihuse",
+    "trustSecure": "Kwishyura mu Mutekano", "trustServices": "Izindi Serivisi Zongerewe",
+    "studentSupplies": "Ibikoresho by'Abanyeshuri", "officeEquipment": "Ibikoresho by'Ibiro",
+    "seeAll": "Reba Byose →",
+    "otherTitle": "Ukeneye Gucapa, Gufotokopi cyangwa Serivisi za Irembo?",
+    "otherSubtitle": "Sura urupapuro rw'Izindi Serivisi kugira ngo uzisabe.",
+    "otherBtn": "Reba Izindi Serivisi"
+  }
+}

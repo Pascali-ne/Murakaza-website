@@ -3,6 +3,7 @@ import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import { BookOpen, Printer } from "lucide-react";
+import useIdleTimeout from "./hooks/useIdleTimeout.js";
 
 import Home from "./pages/Home.jsx";
 import ShopCategory from "./pages/ShopCategory.jsx";
@@ -16,8 +17,14 @@ import Profile from "./pages/Profile.jsx";
 import Contact from "./pages/Contact.jsx";
 import About from "./pages/About.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
+import FeedbackModeration from "./pages/FeedbackModeration.jsx";
+import CreateStaffAccount from "./pages/CreateStaffAccount.jsx";
 
 export default function App() {
+  useIdleTimeout();
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -36,6 +43,10 @@ export default function App() {
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/admin/feedback" element={<ProtectedRoute roles={["manager", "admin"]}><FeedbackModeration /></ProtectedRoute>} />
+          <Route path="/admin/create-staff" element={<ProtectedRoute roles={["admin"]}><CreateStaffAccount /></ProtectedRoute>} />
         </Routes>
       </main>
       <Footer />

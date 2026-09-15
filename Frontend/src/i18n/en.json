@@ -1,0 +1,19 @@
+{
+  "language": { "prompt": "Choose your language", "english": "English", "kinyarwanda": "Ikinyarwanda" },
+  "nav": {
+    "home": "Home", "studentSupplies": "Student Supplies", "officeEquipment": "Office Equipment",
+    "otherServices": "Other Services", "about": "About Us", "contact": "Contact",
+    "search": "Search products...", "login": "Login", "logout": "Logout",
+    "profile": "Profile", "admin": "Admin Dashboard"
+  },
+  "home": {
+    "shopSupplies": "Shop Student Supplies", "shopEquipment": "Shop Office Equipment",
+    "trustRange": "Wide Product Range", "trustDelivery": "Fast Delivery",
+    "trustSecure": "Secure Payments", "trustServices": "Extra Services",
+    "studentSupplies": "Student Supplies", "officeEquipment": "Office Equipment",
+    "seeAll": "See all →",
+    "otherTitle": "Need Printing, Photocopy or Irembo Services?",
+    "otherSubtitle": "Visit our Other Services page to request them.",
+    "otherBtn": "View Other Services"
+  }
+}

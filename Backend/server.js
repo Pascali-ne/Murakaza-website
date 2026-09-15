@@ -54,3 +54,8 @@ app.listen(PORT, async () => {
   await createAdmin()
   console.log(`✅ MURAKAZA server running on port ${PORT}`)
 });
+import paymentRoutes from "./routes/payments.js";
+import feedbackRoutes from "./routes/feedback.js";
+// ...
+app.use("/api/payments", paymentRoutes);
+app.use("/api/feedback", feedbackRoutes);
