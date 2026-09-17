@@ -21,6 +21,9 @@ import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import FeedbackModeration from "./pages/FeedbackModeration.jsx";
 import CreateStaffAccount from "./pages/CreateStaffAccount.jsx";
+import CashierDashboard from "./pages/CashierDashboard.jsx";
+import StoreKeeperDashboard from "./pages/StoreKeeperDashboard.jsx";
+import ManagerDashboard from "./pages/ManagerDashboard.jsx";
 
 export default function App() {
   useIdleTimeout();
@@ -47,6 +50,9 @@ export default function App() {
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/admin/feedback" element={<ProtectedRoute roles={["manager", "admin"]}><FeedbackModeration /></ProtectedRoute>} />
           <Route path="/admin/create-staff" element={<ProtectedRoute roles={["admin"]}><CreateStaffAccount /></ProtectedRoute>} />
+          <Route path="/cashier" element={<ProtectedRoute roles={["cashier", "manager", "admin"]}><CashierDashboard /></ProtectedRoute>} />
+          <Route path="/storekeeper" element={<ProtectedRoute roles={["storekeeper", "manager", "admin"]}><StoreKeeperDashboard /></ProtectedRoute>} />
+          <Route path="/manager" element={<ProtectedRoute roles={["manager", "admin"]}><ManagerDashboard /></ProtectedRoute>} />
         </Routes>
       </main>
       <Footer />

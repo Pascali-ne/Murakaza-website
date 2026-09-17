@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { isValidRwandaPhone } from "../utils/phoneValidation.js";
 
 export default function Register() {
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
@@ -13,6 +14,10 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (!isValidRwandaPhone(form.phone)) {
+      setError("Enter a valid 10-digit Rwandan phone number starting with 07 (e.g. 0781234567).");
+      return;
+    }
     try {
       await register(form);
       navigate("/");
@@ -31,7 +36,7 @@ export default function Register() {
           <input name="email" type="email" value={form.email} onChange={handleChange} required
             placeholder="Email" className="border rounded-lg px-4 py-2" />
           <input name="phone" value={form.phone} onChange={handleChange} required
-            placeholder="Phone Number" className="border rounded-lg px-4 py-2" />
+            placeholder="Phone Number (e.g. 0781234567)" className="border rounded-lg px-4 py-2" />
           <input name="password" type="password" value={form.password} onChange={handleChange} required
             placeholder="Password" className="border rounded-lg px-4 py-2" />
           {error && <p className="text-red-600 text-sm">{error}</p>}

@@ -1,6 +1,9 @@
 import express from "express";
 import pool from "../config/db.js";
-import { protect, adminOnly } from "../middleware/auth.js";
+import { protect, adminOnly, requireRole } from "../middleware/auth.js";
+
+// Storekeepers verify and manage stock; managers and admins can too.
+const stockAccess = requireRole("storekeeper", "manager", "admin");
 import path from "node:path"
 import multer from "multer";
 import fs from "node:fs"
@@ -41,7 +44,7 @@ const upload = multer({
 // POST /api/products/upload-image — admin only, upload a product photo to Cloudinary
 // Send as multipart/form-data with a single field named "image".
 // Returns { url } which can then be saved as a product's image_url.
-router.post("/upload-image", protect, adminOnly, upload.single("image"), async (req, res) => {
+router.post("/upload-image", protect, stockAccess, upload.single("image"), async (req, res) => {
   try {
 
     // Check if file is uploaded.
@@ -84,6 +87,23 @@ router.get("/", async (req, res) => {
   }
 });
 
+// GET /api/products/low-stock — storekeeper/manager/admin: stock verification view
+// Must be registered before "/:id" so "low-stock" isn't read as a product id.
+router.get("/low-stock", protect, stockAccess, async (req, res) => {
+  try {
+    const threshold = Number(req.query.threshold) || 10;
+    const lowStock = await pool.query(
+      "SELECT * FROM products WHERE quantity < $1 ORDER BY quantity ASC",
+      [threshold]
+    );
+    const totals = await pool.query("SELECT COUNT(*) AS total_products, COALESCE(SUM(quantity),0) AS total_units FROM products");
+    res.json({ low_stock_products: lowStock.rows, ...totals.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error fetching stock report" });
+  }
+});
+
 // GET /api/products/:id — single product details
 router.get("/:id", async (req, res) => {
   try {
@@ -95,8 +115,8 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/products — admin only, add product
-router.post("/", protect, adminOnly, async (req, res) => {
+// POST /api/products — storekeeper/manager/admin: add product
+router.post("/", protect, stockAccess, async (req, res) => {
   try {
     const { name, category, price, quantity, description, image_url } = req.body;
     const result = await pool.query(
@@ -110,8 +130,8 @@ router.post("/", protect, adminOnly, async (req, res) => {
   }
 });
 
-// PUT /api/products/:id — admin only, edit product
-router.put("/:id", protect, adminOnly, async (req, res) => {
+// PUT /api/products/:id — storekeeper/manager/admin: edit product / update stock
+router.put("/:id", protect, stockAccess, async (req, res) => {
   try {
     const { name, category, price, quantity, description, image_url } = req.body;
     const result = await pool.query(
@@ -126,8 +146,8 @@ router.put("/:id", protect, adminOnly, async (req, res) => {
   }
 });
 
-// DELETE /api/products/:id — admin only
-router.delete("/:id", protect, adminOnly, async (req, res) => {
+// DELETE /api/products/:id — storekeeper/manager/admin: remove product
+router.delete("/:id", protect, stockAccess, async (req, res) => {
   try {
     await pool.query("DELETE FROM products WHERE product_id = $1", [req.params.id]);
     res.json({ message: "Product deleted" });

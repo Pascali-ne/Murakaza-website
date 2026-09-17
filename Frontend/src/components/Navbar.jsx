@@ -62,6 +62,21 @@ export default function Navbar() {
                 <div className="absolute block right-0 mt-2 bg-white text-gray-800 rounded shadow-lg w-40">
                   <Link to="/profile" className="block px-4 py-2 hover:bg-gray-100">{t("nav.profile")}</Link>
                   {user.role === "admin" && <Link to="/admin" className="block px-4 py-2 hover:bg-gray-100">{t("nav.admin")}</Link>}
+                  {(user.role === "manager" || user.role === "admin") && (
+                    <Link to="/manager" className="block px-4 py-2 hover:bg-gray-100">Manager Dashboard</Link>
+                  )}
+                  {(user.role === "cashier" || user.role === "manager" || user.role === "admin") && (
+                    <Link to="/cashier" className="block px-4 py-2 hover:bg-gray-100">Cashier Dashboard</Link>
+                  )}
+                  {(user.role === "storekeeper" || user.role === "manager" || user.role === "admin") && (
+                    <Link to="/storekeeper" className="block px-4 py-2 hover:bg-gray-100">Store Dashboard</Link>
+                  )}
+                  {(user.role === "manager" || user.role === "admin") && (
+                    <Link to="/admin/feedback" className="block px-4 py-2 hover:bg-gray-100">Feedback Moderation</Link>
+                  )}
+                  {user.role === "admin" && (
+                    <Link to="/admin/create-staff" className="block px-4 py-2 hover:bg-gray-100">Create Staff Account</Link>
+                  )}
                   <button onClick={logout} className="block w-full text-left px-4 py-2 hover:bg-gray-100">{t("nav.logout")}</button>
                 </div>
               )}

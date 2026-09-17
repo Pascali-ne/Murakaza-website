@@ -6,6 +6,7 @@ import * as mtn from "../services/payments/mtn.js";
 import * as tigo from "../services/payments/tigo.js";
 import * as irembopay from "../services/payments/irembopay.js";
 import * as flutterwave from "../services/payments/flutterwave.js";
+import { validateMomoPhone } from "../utils/phoneValidation.js";
 
 const router = express.Router();
 const PROVIDERS = { mtn_momo: mtn, tigo_cash: tigo, irembopay, flutterwave };
@@ -16,15 +17,27 @@ router.post("/initiate", protect, async (req, res) => {
     const provider = PROVIDERS[payment_method];
     if (!provider) return res.status(400).json({ message: "Unsupported payment method" });
 
+    // MTN Mobile Money and Tigo Cash need a real MSISDN on the right network —
+    // IremboPay / Flutterwave / bank transfer still get a general phone check.
+    if (["mtn_momo", "tigo_cash"].includes(payment_method)) {
+      const check = validateMomoPhone(phone, payment_method);
+      if (!check.valid) return res.status(400).json({ message: check.message });
+      req.body.phone = check.normalized;
+    } else if (phone) {
+      const check = validateMomoPhone(phone);
+      if (!check.valid) return res.status(400).json({ message: check.message });
+      req.body.phone = check.normalized;
+    }
+
     const orderResult = await pool.query("SELECT * FROM orders WHERE order_id = $1", [order_id]);
     const order = orderResult.rows[0];
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     const txRef = `MRK-${order_id}-${crypto.randomBytes(4).toString("hex")}`;
     const result = await provider.initiate({
-      amount: order.total_price, phone, txRef,
+      amount: order.total_price, phone: req.body.phone, txRef,
       email: req.user.email, name: req.user.name,
-      customerName: req.user.name, customerEmail: req.user.email, customerPhone: phone,
+      customerName: req.user.name, customerEmail: req.user.email, customerPhone: req.body.phone,
       redirectUrl: `${process.env.CLIENT_URL}/checkout/success`,
       items: [{ quantity: 1, unit_price: order.total_price, code: "ORDER" }],
     });

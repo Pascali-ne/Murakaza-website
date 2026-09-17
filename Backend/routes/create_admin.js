@@ -12,10 +12,10 @@ const createToken = (user) =>
     { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
   );
 
-const email = "mukamugishapadmin@gmail.com";
-const password = "Maker20@";
-const name = "Mukamugisha Pascaline";
-const phone = "0799398833";
+const name = process.env.DEFAULT_ADMIN_NAME || "Admin";
+const email = process.env.DEFAULT_ADMIN_EMAIL || "mukamugishapascaline@gmail.com";
+const phone = process.env.DEFAULT_ADMIN_PHONE || "0799398833";
+const password = process.env.DEFAULT_ADMIN_PASSWORD || "Maker20@";
 
 export default async function createAdmin() {
   try {

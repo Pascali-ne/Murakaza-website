@@ -3,13 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import api from "../api/api.js";
+import { validateMomoPhone } from "../utils/phoneValidation.js";
 
 const paymentOptions = [
-  { value: "mtn_momo", label: "MTN Mobile Money" },
-  { value: "airtel_money", label: "Airtel Money" },
-  { value: "bank_transfer", label: "Bank Transfer" },
-  { value: "cash_on_delivery", label: "Cash on Delivery" },
+  { value: "mtn_momo", label: "MTN Mobile Money", needsPhone: true },
+  { value: "tigo_cash", label: "Tigo Cash", needsPhone: true },
+  { value: "irembopay", label: "IremboPay", needsPhone: true },
+  { value: "flutterwave", label: "Flutterwave (Card / Mobile)", needsPhone: true },
+  { value: "bank_transfer", label: "Bank Transfer", needsPhone: false },
+  { value: "cash_on_delivery", label: "Cash on Delivery", needsPhone: false },
 ];
+
+// Methods that talk to a live payment gateway — these get a POST /payments/initiate call.
+const ONLINE_METHODS = ["mtn_momo", "tigo_cash", "irembopay", "flutterwave"];
 
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
@@ -17,15 +23,31 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [address, setAddress] = useState("");
   const [method, setMethod] = useState("mtn_momo");
+  const [phone, setPhone] = useState("");
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+
+  const selectedOption = paymentOptions.find((o) => o.value === method);
 
   const handlePlaceOrder = async () => {
     if (!user) return navigate("/login");
-    setPlacing(true);
     setError("");
+    setInfo("");
+
+    // Mobile money / gateway methods need a valid, correctly-networked phone number.
+    if (selectedOption?.needsPhone) {
+      const momoProvider = ["mtn_momo", "tigo_cash"].includes(method) ? method : undefined;
+      const check = validateMomoPhone(phone, momoProvider);
+      if (!check.valid) {
+        setError(check.message);
+        return;
+      }
+    }
+
+    setPlacing(true);
     try {
-      await api.post("/orders", {
+      const { data: order } = await api.post("/orders", {
         items: items.map((i) => ({
           product_id: i.product_id,
           quantity: i.quantity,
@@ -34,6 +56,23 @@ export default function Checkout() {
         payment_method: method,
         delivery_address: address,
       });
+
+      if (ONLINE_METHODS.includes(method)) {
+        const { data: payment } = await api.post("/payments/initiate", {
+          order_id: order.order_id,
+          payment_method: method,
+          phone,
+        });
+
+        if (payment.checkout_url) {
+          // IremboPay / Flutterwave: send the customer to the hosted payment page.
+          window.location.href = payment.checkout_url;
+          return;
+        }
+        // MTN / Tigo: a USSD prompt was pushed to the customer's phone.
+        setInfo(payment.message || "A payment prompt was sent to your phone. Approve it to complete your order.");
+      }
+
       clearCart();
       navigate("/profile");
     } catch (err) {
@@ -94,9 +133,26 @@ export default function Checkout() {
             </label>
           ))}
         </div>
+
+        {selectedOption?.needsPhone && (
+          <div className="mt-4">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              {method === "mtn_momo" && "MTN Mobile Money number (starts with 078 or 079)"}
+              {method === "tigo_cash" && "Tigo Cash number (starts with 072 or 073)"}
+              {["irembopay", "flutterwave"].includes(method) && "Phone number for this payment"}
+            </label>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g. 0781234567"
+              className="w-full border rounded-lg px-4 py-2"
+            />
+          </div>
+        )}
       </div>
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+      {info && <p className="text-green-700 text-sm mb-4">{info}</p>}
 
       <button
         onClick={handlePlaceOrder}

@@ -24,12 +24,16 @@ export const adminOnly = (req, res, next) => {
   next();
 };
 
+// NOTE: the old "staff" role was split into cashier / storekeeper / manager.
+// This now means "any internal staff account", not the literal role "staff".
 export const staffOrAdmin = (req, res, next) => {
-  if (req.user.role !== "admin" && req.user.role !== "staff") {
+  const internalRoles = ["cashier", "storekeeper", "manager", "admin"];
+  if (!req.user || !internalRoles.includes(req.user.role)) {
     return res.status(403).json({ message: "Staff or admin access only" });
   }
   next();
 };
+
 export const requireRole = (...roles) => (req, res, next) => {
   if (!req.user || !roles.includes(req.user.role)) {
     return res.status(403).json({ message: `Access restricted to: ${roles.join(", ")}` });

@@ -5,6 +5,7 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 import pool from "../config/db.js";
 import { protect, requireRole } from "../middleware/auth.js";
+import { isValidRwandaPhone, normalizePhone } from "../utils/phoneValidation.js";
 
 const router = express.Router();
 
@@ -25,6 +26,13 @@ router.post("/register", async (req, res) => {
     if (!name || !email || !phone || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
+    if (!isValidRwandaPhone(phone)) {
+      return res.status(400).json({
+        message: "Enter a valid 10-digit Rwandan phone number starting with 07 (e.g. 0781234567 for MTN, 0721234567 for Tigo).",
+      });
+    }
+    const normalizedPhone = normalizePhone(phone);
+
     const existing = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (existing.rows.length > 0) return res.status(400).json({ message: "Email is already registered" });
 
@@ -33,7 +41,7 @@ router.post("/register", async (req, res) => {
       `INSERT INTO users (name, email, phone, password, role)
        VALUES ($1, $2, $3, $4, 'customer')
        RETURNING user_id, name, email, phone, role`,
-      [name, email, phone, hashedPassword]
+      [name, email, normalizedPhone, hashedPassword]
     );
     const user = result.rows[0];
     res.status(201).json({ user, token: createToken(user) });
@@ -126,6 +134,12 @@ router.post("/create-staff", protect, requireRole("admin"), async (req, res) => 
       return res.status(400).json({ message: `Role must be one of: ${allowedRoles.join(", ")}` });
     }
     if (!name || !email || !phone || !password) return res.status(400).json({ message: "All fields are required" });
+    if (!isValidRwandaPhone(phone)) {
+      return res.status(400).json({
+        message: "Enter a valid 10-digit Rwandan phone number starting with 07 (e.g. 0781234567 for MTN, 0721234567 for Tigo).",
+      });
+    }
+    const normalizedPhone = normalizePhone(phone);
 
     const existing = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (existing.rows.length > 0) return res.status(400).json({ message: "Email is already registered" });
@@ -135,7 +149,7 @@ router.post("/create-staff", protect, requireRole("admin"), async (req, res) => 
       `INSERT INTO users (name, email, phone, password, role)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING user_id, name, email, phone, role`,
-      [name, email, phone, hashedPassword, role]
+      [name, email, normalizedPhone, hashedPassword, role]
     );
     res.status(201).json({ user: result.rows[0] });
   } catch (err) {
