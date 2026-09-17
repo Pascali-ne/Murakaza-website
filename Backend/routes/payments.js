@@ -17,8 +17,6 @@ router.post("/initiate", protect, async (req, res) => {
     const provider = PROVIDERS[payment_method];
     if (!provider) return res.status(400).json({ message: "Unsupported payment method" });
 
-    // MTN Mobile Money and Tigo Cash need a real MSISDN on the right network —
-    // IremboPay / Flutterwave / bank transfer still get a general phone check.
     if (["mtn_momo", "tigo_cash"].includes(payment_method)) {
       const check = validateMomoPhone(phone, payment_method);
       if (!check.valid) return res.status(400).json({ message: check.message });
@@ -78,29 +76,46 @@ router.post("/webhook/:provider", async (req, res) => {
 });
 
 router.get("/", protect, requireRole("cashier", "manager", "admin"), async (req, res) => {
-  const result = await pool.query(
-    `SELECT p.*, o.customer_id, u.name AS customer_name FROM payments p
-     JOIN orders o ON p.order_id = o.order_id JOIN users u ON o.customer_id = u.user_id
-     ORDER BY p.created_at DESC`
-  );
-  res.json(result.rows);
+  try {
+    const result = await pool.query(
+      `SELECT p.*, o.customer_id, u.name AS customer_name FROM payments p
+       JOIN orders o ON p.order_id = o.order_id JOIN users u ON o.customer_id = u.user_id
+       ORDER BY p.created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error fetching payments", detail: err.message });
+  }
 });
 
 router.put("/:id/confirm", protect, requireRole("cashier", "manager", "admin"), async (req, res) => {
-  const result = await pool.query(
-    `UPDATE payments SET payment_status = 'paid', confirmed_by = $1, confirmed_at = NOW() WHERE payment_id = $2 RETURNING *`,
-    [req.user.user_id, req.params.id]
-  );
-  await pool.query(`UPDATE orders SET order_status = 'confirmed' WHERE order_id = $1`, [result.rows[0].order_id]);
-  res.json(result.rows[0]);
+  try {
+    const result = await pool.query(
+      `UPDATE payments SET payment_status = 'paid', confirmed_by = $1, confirmed_at = NOW() WHERE payment_id = $2 RETURNING *`,
+      [req.user.user_id, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: "Payment not found" });
+    await pool.query(`UPDATE orders SET order_status = 'confirmed' WHERE order_id = $1`, [result.rows[0].order_id]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error confirming payment", detail: err.message });
+  }
 });
 
 router.put("/:id/reject", protect, requireRole("cashier", "manager", "admin"), async (req, res) => {
-  const result = await pool.query(
-    `UPDATE payments SET payment_status = 'failed', confirmed_by = $1, confirmed_at = NOW() WHERE payment_id = $2 RETURNING *`,
-    [req.user.user_id, req.params.id]
-  );
-  res.json(result.rows[0]);
+  try {
+    const result = await pool.query(
+      `UPDATE payments SET payment_status = 'failed', confirmed_by = $1, confirmed_at = NOW() WHERE payment_id = $2 RETURNING *`,
+      [req.user.user_id, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: "Payment not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error rejecting payment", detail: err.message });
+  }
 });
 
 export default router;
