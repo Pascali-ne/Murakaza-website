@@ -20,7 +20,15 @@ export default function ProductDetails() {
     <div className="max-w-5xl mx-auto px-4 py-10 grid md:grid-cols-2 gap-10">
       <div className="h-80 bg-gray-100 rounded-xl flex items-center justify-center">
         {product.image_url ? (
-          <img src={product.image_url} alt={product.name} className="h-full w-full object-cover rounded-xl" />
+          <img
+            src={product.image_url}
+            alt={product.name}
+            className="h-full w-full object-cover rounded-xl"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "https://placehold.co/600x400/e2e8f0/64748b?text=Murakaza";
+            }}
+          />
         ) : (
           <span className="text-gray-400">No Image</span>
         )}

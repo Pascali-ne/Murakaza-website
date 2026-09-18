@@ -11,9 +11,23 @@ export default function Home() {
   const [supplies, setSupplies] = useState([]);
   const [equipment, setEquipment] = useState([]);
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    api.get("/products?category=student_supplies").then((res) => setSupplies(res.data.slice(0, 4)));
-    api.get("/products?category=office_equipment").then((res) => setEquipment(res.data.slice(0, 4)));
+    Promise.all([
+      api.get("/products?category=student_supplies"),
+      api.get("/products?category=office_equipment"),
+    ])
+      .then(([suppliesRes, equipmentRes]) => {
+        if (Array.isArray(suppliesRes?.data)) setSupplies(suppliesRes.data.slice(0, 4));
+        if (Array.isArray(equipmentRes?.data)) setEquipment(equipmentRes.data.slice(0, 4));
+      })
+      .catch((err) => {
+        console.warn("Could not load products on home page:", err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   return (
@@ -46,9 +60,15 @@ export default function Home() {
           <h2 className="text-2xl font-bold text-gray-800">{t("home.studentSupplies")}</h2>
           <Link to="/student-supplies" className="text-primary font-semibold text-sm">{t("home.seeAll")}</Link>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {supplies.map((p) => <ProductCard key={p.product_id} product={p} />)}
-        </div>
+        {loading ? (
+          <p className="text-gray-400 py-6 text-sm">Loading products...</p>
+        ) : supplies.length === 0 ? (
+          <p className="text-gray-400 py-6 text-sm">No products available at the moment.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {supplies.map((p) => <ProductCard key={p.product_id} product={p} />)}
+          </div>
+        )}
       </section>
 
       <section className="max-w-7xl mx-auto px-4 py-8">
@@ -56,9 +76,15 @@ export default function Home() {
           <h2 className="text-2xl font-bold text-gray-800">{t("home.officeEquipment")}</h2>
           <Link to="/office-equipment" className="text-primary font-semibold text-sm">{t("home.seeAll")}</Link>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {equipment.map((p) => <ProductCard key={p.product_id} product={p} />)}
-        </div>
+        {loading ? (
+          <p className="text-gray-400 py-6 text-sm">Loading products...</p>
+        ) : equipment.length === 0 ? (
+          <p className="text-gray-400 py-6 text-sm">No products available at the moment.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {equipment.map((p) => <ProductCard key={p.product_id} product={p} />)}
+          </div>
+        )}
       </section>
 
       <section className="max-w-7xl mx-auto px-4 py-10">

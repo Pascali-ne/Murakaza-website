@@ -9,7 +9,15 @@ export default function ProductCard({ product }) {
       <Link to={`/product/${product.product_id}`}>
         <div className="h-40 bg-gray-100 flex items-center justify-center">
           {product.image_url ? (
-            <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = "https://placehold.co/400x300/e2e8f0/64748b?text=Murakaza";
+              }}
+            />
           ) : (
             <span className="text-gray-400 text-sm">No Image</span>
           )}

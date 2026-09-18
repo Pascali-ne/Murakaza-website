@@ -1,0 +1,163 @@
+// Prisma Schema for MURAKAZA Web Application
+// Connected to serverless Neon PostgreSQL with sslmode=require
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  customer
+  cashier
+  storekeeper
+  manager
+  admin
+}
+
+enum ProductCategory {
+  student_supplies
+  office_equipment
+  other_services
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  processing
+  delivered
+  cancelled
+}
+
+enum PaymentMethod {
+  mtn_momo
+  tigo_cash
+  airtel_money
+  irembopay
+  flutterwave
+  bank_transfer
+  cash_on_delivery
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum FeedbackStatus {
+  visible
+  hidden
+}
+
+model User {
+  user_id            Int            @id @default(autoincrement())
+  name               String         @db.VarChar(150)
+  email              String         @unique @db.VarChar(150)
+  phone              String         @db.VarChar(30)
+  password           String         @db.VarChar(255)
+  role               UserRole       @default(customer)
+  reset_token        String?        @db.VarChar(255)
+  reset_token_expiry DateTime?      @db.Timestamp(6)
+  created_at         DateTime?      @default(now()) @db.Timestamp(6)
+
+  orders             Order[]
+  confirmed_payments Payment[]      @relation("CashierConfirmedPayments")
+  feedbacks          Feedback[]
+
+  @@map("users")
+}
+
+model Product {
+  product_id  Int             @id @default(autoincrement())
+  name        String          @db.VarChar(200)
+  category    ProductCategory
+  price       Decimal         @db.Decimal(10, 2)
+  quantity    Int             @default(0)
+  description String?
+  image_url   String?
+  created_at  DateTime?       @default(now()) @db.Timestamp(6)
+
+  order_items OrderItem[]
+  feedbacks   Feedback[]
+
+  @@map("products")
+}
+
+model Order {
+  order_id         Int           @id @default(autoincrement())
+  customer_id      Int?
+  total_price      Decimal       @db.Decimal(10, 2)
+  payment_method   PaymentMethod
+  order_status     OrderStatus   @default(pending)
+  delivery_address String?
+  created_at       DateTime?     @default(now()) @db.Timestamp(6)
+
+  customer         User?         @relation(fields: [customer_id], references: [user_id], onDelete: SetNull)
+  order_items      OrderItem[]
+  payments         Payment[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  order_item_id Int      @id @default(autoincrement())
+  order_id      Int
+  product_id    Int?
+  quantity      Int
+  unit_price    Decimal  @db.Decimal(10, 2)
+
+  order         Order    @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  product       Product? @relation(fields: [product_id], references: [product_id], onDelete: SetNull)
+
+  @@map("order_items")
+}
+
+model Payment {
+  payment_id       Int           @id @default(autoincrement())
+  order_id         Int
+  payment_method   PaymentMethod
+  payment_status   PaymentStatus @default(pending)
+  amount           Decimal       @db.Decimal(10, 2)
+  tx_ref           String?       @db.VarChar(255)
+  gateway_response Json?         @db.JsonB
+  confirmed_by     Int?
+  confirmed_at     DateTime?     @db.Timestamp(6)
+  created_at       DateTime?     @default(now()) @db.Timestamp(6)
+
+  order            Order         @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  confirmed_user   User?         @relation("CashierConfirmedPayments", fields: [confirmed_by], references: [user_id], onDelete: SetNull)
+
+  @@map("payments")
+}
+
+model ServiceRequest {
+  request_id    Int       @id @default(autoincrement())
+  customer_name String    @db.VarChar(150)
+  email         String?   @db.VarChar(150)
+  phone         String?   @db.VarChar(30)
+  service_type  String?   @db.VarChar(100)
+  message       String?
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+
+  @@map("service_requests")
+}
+
+model Feedback {
+  feedback_id Int            @id @default(autoincrement())
+  customer_id Int?
+  product_id  Int?
+  rating      Int?
+  comment     String?
+  status      FeedbackStatus @default(visible)
+  created_at  DateTime?      @default(now()) @db.Timestamp(6)
+
+  customer    User?          @relation(fields: [customer_id], references: [user_id], onDelete: SetNull)
+  product     Product?       @relation(fields: [product_id], references: [product_id], onDelete: SetNull)
+
+  @@map("feedback")
+}
