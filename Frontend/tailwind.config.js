@@ -10,13 +10,8 @@ export default {
         surface: "#F5F7FA",
       },
       fontFamily: {
-        sans: ["'Plus Jakarta Sans'", "Inter", "system-ui", "sans-serif"],
-        heading: ["'Plus Jakarta Sans'", "Poppins", "system-ui", "sans-serif"],
-      },
-      boxShadow: {
-        card: "0 12px 24px -4px rgba(29, 78, 137, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03)",
-        subtle: "0 2px 10px rgba(0, 0, 0, 0.04)",
-        floating: "0 20px 30px -10px rgba(29, 78, 137, 0.12), 0 10px 15px -5px rgba(0, 0, 0, 0.04)",
+        sans: ["Inter", "system-ui", "sans-serif"],
+        heading: ["Poppins", "system-ui", "sans-serif"],
       },
       keyframes: {
         float: { "0%, 100%": { transform: "translateY(0px)" }, "50%": { transform: "translateY(-12px)" } },

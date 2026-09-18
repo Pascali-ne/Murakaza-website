@@ -12,36 +12,59 @@ const createToken = (user) =>
     { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
   );
 
-const name = process.env.DEFAULT_ADMIN_NAME || "Admin";
-const email = process.env.DEFAULT_ADMIN_EMAIL || "mukamugishapascaline@gmail.com";
-const phone = process.env.DEFAULT_ADMIN_PHONE || "0799398833";
-const password = process.env.DEFAULT_ADMIN_PASSWORD || "Maker20@";
+const defaultAccounts = [
+  {
+    name: process.env.DEFAULT_ADMIN_NAME || "Admin",
+    email: process.env.DEFAULT_ADMIN_EMAIL || "mukamugishapascaline@gmail.com",
+    phone: process.env.DEFAULT_ADMIN_PHONE || "0799398833",
+    password: process.env.DEFAULT_ADMIN_PASSWORD || "Maker20@",
+    role: "admin",
+  },
+  {
+    name: "Admin User",
+    email: "admin@murakaza.com",
+    phone: "0790000001",
+    password: "Admin@123",
+    role: "admin",
+  },
+  {
+    name: "Manager User",
+    email: "manager@murakaza.com",
+    phone: "0790000002",
+    password: "Manager@123",
+    role: "manager",
+  },
+  {
+    name: "Cashier User",
+    email: "cashier@murakaza.com",
+    phone: "0790000003",
+    password: "Cashier@123",
+    role: "cashier",
+  },
+  {
+    name: "Storekeeper User",
+    email: "storekeeper@murakaza.com",
+    phone: "0790000004",
+    password: "Storekeeper@123",
+    role: "storekeeper",
+  },
+];
 
 export default async function createAdmin() {
   try {
-    if (!name || !email || !phone || !password) {
-      console.log({ message: "All fields are required" });
-      return;
+    for (const acc of defaultAccounts) {
+      const existing = await pool.query("SELECT user_id FROM users WHERE email = $1", [acc.email]);
+      if (existing.rows.length === 0) {
+        const hashedPassword = await bcrypt.hash(acc.password, 10);
+        await pool.query(
+          `INSERT INTO users (name, email, phone, password, role)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [acc.name, acc.email, acc.phone, hashedPassword, acc.role]
+        );
+        console.log(`Default account created: ${acc.email} (${acc.role})`);
+      }
     }
-
-    const existing = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    if (existing.rows.length > 0) {
-      console.log("Default admin already exists — skipping creation.");
-      return;
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const result = await pool.query(
-      `INSERT INTO users (name, email, phone, password, role)
-       VALUES ($1, $2, $3, $4, 'admin')
-       RETURNING user_id, name, email, phone, role`,
-      [name, email, phone, hashedPassword]
-    );
-
-    const user = result.rows[0];
-    const token = createToken(user);
-    console.log("Default admin created:", user.email);
   } catch (err) {
-    console.error(err);
+    console.error("Error creating default accounts:", err.message);
   }
 }
