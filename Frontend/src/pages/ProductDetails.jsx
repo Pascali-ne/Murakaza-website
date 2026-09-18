@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../api/api.js";
 import { useCart } from "../context/CartContext.jsx";
-import { formatImageUrl } from "../utils/imageUrl.js";
+import { formatImageUrl, isVideoUrl } from "../utils/imageUrl.js";
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -17,21 +17,42 @@ export default function ProductDetails() {
 
   if (!product) return <p className="text-center py-20 text-gray-500">Loading...</p>;
 
+  const isVideo = isVideoUrl(product.image_url);
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 grid md:grid-cols-2 gap-10">
-      <div className="h-80 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden">
+      <div className="relative h-80 sm:h-96 md:h-[420px] bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-center overflow-hidden group shadow-sm">
         {product.image_url ? (
-          <img
-            src={formatImageUrl(product.image_url)}
-            alt={product.name}
-            className="h-full w-full object-cover rounded-xl"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = "https://placehold.co/600x400/e2e8f0/64748b?text=Murakaza";
-            }}
-          />
+          isVideo ? (
+            <video
+              src={formatImageUrl(product.image_url)}
+              controls
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="relative z-10 max-h-full max-w-full object-contain rounded-xl shadow-xs"
+            />
+          ) : (
+            <>
+              {/* Subtle ambient blur for ultra-premium backdrop framing */}
+              <div
+                className="absolute inset-0 bg-cover bg-center blur-2xl opacity-15 scale-125 pointer-events-none"
+                style={{ backgroundImage: `url(${formatImageUrl(product.image_url)})` }}
+              />
+              <img
+                src={formatImageUrl(product.image_url)}
+                alt={product.name}
+                className="relative z-10 max-h-full max-w-full object-contain p-3 rounded-xl drop-shadow-sm transition-transform duration-500 ease-out group-hover:scale-105"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = "https://placehold.co/600x400/e2e8f0/64748b?text=Murakaza";
+                }}
+              />
+            </>
+          )
         ) : (
-          <span className="text-gray-400">No Image</span>
+          <span className="text-gray-400 font-medium">No Image Available</span>
         )}
       </div>
 
