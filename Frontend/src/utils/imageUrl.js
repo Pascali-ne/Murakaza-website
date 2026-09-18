@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Formats and cleans product image URLs to ensure safe, HTTPS-compliant rendering on Vercel
  * and properly encodes filenames with special characters (like hashes, spaces, commas).
  */
@@ -34,4 +34,20 @@ export function formatImageUrl(url) {
   }
 
   return clean;
+}
+
+/**
+ * Detects if a URL points to a video file format.
+ */
+export function isVideoUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  const clean = url.split("?")[0].split("#")[0].toLowerCase();
+  return (
+    clean.endsWith(".mp4") ||
+    clean.endsWith(".webm") ||
+    clean.endsWith(".ogg") ||
+    clean.endsWith(".mov") ||
+    clean.endsWith(".m4v") ||
+    clean.includes("video/mp4")
+  );
 }

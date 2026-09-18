@@ -53,11 +53,20 @@ const MulterDiskStorage = multer.diskStorage({
 
 const upload = multer({
   storage: MulterDiskStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Limit to 5MB
+  limits: { fileSize: 30 * 1024 * 1024 }, // 30MB to support short product demo clips
   fileFilter: function (req, file, cb) {
-    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "video/mp4",
+      "video/webm",
+      "video/ogg",
+      "video/quicktime",
+    ];
     if (!allowedTypes.includes(file.mimetype)) {
-      return cb(new Error("Only image files are allowed"));
+      return cb(new Error("Only image (JPG, PNG, WebP) or video (MP4, WebM) files are allowed"));
     }
 
     cb(null, true);
