@@ -4,7 +4,8 @@
     "home": "Home", "studentSupplies": "Student Supplies", "officeEquipment": "Office Equipment",
     "otherServices": "Other Services", "about": "About Us", "contact": "Contact",
     "search": "Search products...", "login": "Login", "logout": "Logout",
-    "profile": "Profile", "admin": "Admin Dashboard"
+    "profile": "Profile", "admin": "Admin Dashboard",
+    "blackMode": "Black Mode", "whiteMode": "White Mode"
   },
   "home": {
     "shopSupplies": "Shop Student Supplies", "shopEquipment": "Shop Office Equipment",

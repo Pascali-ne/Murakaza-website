@@ -8,8 +8,8 @@ export default function ProductCard({ product }) {
   const isVideo = isVideoUrl(product.image_url);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col group border border-slate-100">
-      <Link to={`/product/${product.product_id}`} className="relative h-48 sm:h-52 bg-slate-100 overflow-hidden flex items-center justify-center">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col group border border-slate-100 dark:border-slate-700">
+      <Link to={`/product/${product.product_id}`} className="relative h-48 sm:h-52 bg-slate-100 dark:bg-slate-700 overflow-hidden flex items-center justify-center">
         {product.image_url ? (
           isVideo ? (
             <video
@@ -32,7 +32,7 @@ export default function ProductCard({ product }) {
             />
           )
         ) : (
-          <span className="text-gray-400 text-sm font-medium">No Image</span>
+          <span className="text-gray-400 dark:text-gray-500 text-sm font-medium">No Image</span>
         )}
 
         {/* Stock Badge Overlay */}
@@ -51,11 +51,11 @@ export default function ProductCard({ product }) {
 
       <div className="p-4 flex flex-col flex-1">
         <Link to={`/product/${product.product_id}`}>
-          <h3 className="font-semibold text-gray-800 text-sm sm:text-base line-clamp-2 group-hover:text-primary transition-colors">
+          <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm sm:text-base line-clamp-2 group-hover:text-primary dark:group-hover:text-accent transition-colors">
             {product.name}
           </h3>
         </Link>
-        <p className="text-primary font-bold text-base sm:text-lg mt-2">
+        <p className="text-primary dark:text-accent font-bold text-base sm:text-lg mt-2">
           RWF {Number(product.price).toLocaleString()}
         </p>
         <button
