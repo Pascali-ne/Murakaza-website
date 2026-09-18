@@ -1,0 +1,15 @@
+node_modules/
+Frontend/node_modules/
+Backend/node_modules/
+Frontend/dist/
+dist/
+.env
+.env.local
+Frontend/.env
+Backend/.env
+Backend/uploads/*
+!Backend/uploads/.gitkeep
+*.log
+.DS_Store
+Thumbs.db
+.vscode/

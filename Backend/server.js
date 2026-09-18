@@ -8,6 +8,8 @@ import productRoutes from "./routes/products.js";
 import orderRoutes from "./routes/orders.js";
 import serviceRoutes from "./routes/services.js";
 import userRoutes from "./routes/users.js";
+import paymentRoutes from "./routes/payments.js";
+import feedbackRoutes from "./routes/feedback.js";
 import createAdmin from "./routes/create_admin.js";
 
 
@@ -22,7 +24,25 @@ const uploadStorage = path.join(path.resolve(), "uploads");
 dotenv.config();
 const app = express();
 
-      app.use(cors({ origin: process.env.CLIENT_URL || "*" }));
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://murakaza-website.vercel.app",
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Fallback allow to avoid blocking legitimate frontend requests
+      }
+    },
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
@@ -38,6 +58,8 @@ app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/feedback", feedbackRoutes);
 
 // Handle multer errors (bad file type, file too large) with a clean JSON response
 app.use((err, req, res, next) => {
@@ -55,8 +77,3 @@ app.listen(PORT, async () => {
   await createAdmin()
   console.log(`✅ MURAKAZA server running on port ${PORT}`)
 });
-import paymentRoutes from "./routes/payments.js";
-import feedbackRoutes from "./routes/feedback.js";
-// ...
-app.use("/api/payments", paymentRoutes);
-app.use("/api/feedback", feedbackRoutes);

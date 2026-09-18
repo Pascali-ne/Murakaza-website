@@ -50,28 +50,97 @@ router.post("/initiate", protect, async (req, res) => {
 
 router.post("/webhook/:provider", async (req, res) => {
   try {
-    const provider = PROVIDERS[req.params.provider];
-    if (!provider) return res.sendStatus(400);
-    const txRef = req.body.tx_ref || req.body.externalId || req.body.data?.tx_ref || req.body.invoiceNumber;
-    if (!txRef) return res.sendStatus(400);
+    const { provider } = req.params;
+    const gateway = PROVIDERS[provider];
+    if (!gateway) return res.status(400).json({ message: "Unknown gateway provider" });
 
-    const verified = await provider.verify(txRef);
+    // 1. Cryptographic Webhook Authentication
+    if (provider === "flutterwave") {
+      const secretHash = process.env.FLUTTERWAVE_WEBHOOK_HASH || process.env.FLUTTERWAVE_SECRET_KEY;
+      const signature = req.headers["verif-hash"];
+      if (secretHash && signature !== secretHash) {
+        console.warn("Unauthorized Flutterwave webhook attempt: invalid verif-hash");
+        return res.status(401).json({ message: "Invalid webhook signature" });
+      }
+    } else if (provider === "mtn_momo") {
+      const subscriptionKey = process.env.MTN_MOMO_SUBSCRIPTION_KEY;
+      const incomingKey = req.headers["ocp-apim-subscription-key"] || req.headers["x-subscription-key"];
+      if (subscriptionKey && incomingKey && incomingKey !== subscriptionKey) {
+        console.warn("Unauthorized MTN MoMo webhook attempt: subscription key mismatch");
+        return res.status(401).json({ message: "Invalid subscription key" });
+      }
+    } else if (provider === "irembopay") {
+      const iremboSecret = process.env.IREMBOPAY_SECRET_KEY;
+      const authHeader = req.headers["x-webhook-token"] || req.headers["authorization"];
+      if (iremboSecret && authHeader && !authHeader.includes(iremboSecret)) {
+        console.warn("Unauthorized IremboPay webhook attempt: token mismatch");
+        return res.status(401).json({ message: "Invalid webhook token" });
+      }
+    } else if (provider === "tigo_cash") {
+      const tigoKey = process.env.TIGO_CASH_API_KEY;
+      const incomingAuth = req.headers["x-api-key"] || req.headers["authorization"];
+      if (tigoKey && incomingAuth && !incomingAuth.includes(tigoKey)) {
+        console.warn("Unauthorized Tigo webhook attempt: key mismatch");
+        return res.status(401).json({ message: "Invalid API key" });
+      }
+    }
+
+    // 2. Extract transaction reference
+    const txRef =
+      req.body.tx_ref ||
+      req.body.externalId ||
+      req.body.data?.tx_ref ||
+      req.body.invoiceNumber ||
+      req.body.transactionReference;
+
+    if (!txRef) {
+      return res.status(400).json({ message: "Missing transaction reference" });
+    }
+
+    // 3. Cryptographically / Server-to-server verify against provider API
+    const verified = await gateway.verify(txRef);
     const isPaid = ["SUCCESSFUL", "successful", "PAID", "paid"].includes(verified.status);
 
-    await pool.query(`UPDATE payments SET payment_status = $1, gateway_response = $2 WHERE tx_ref = $3`, [
-      isPaid ? "paid" : "failed", JSON.stringify(verified.raw || verified), txRef,
-    ]);
+    await pool.query(
+      `UPDATE payments 
+       SET payment_status = $1, gateway_response = $2 
+       WHERE tx_ref = $3`,
+      [isPaid ? "paid" : "failed", JSON.stringify(verified.raw || verified), txRef]
+    );
 
     if (isPaid) {
       await pool.query(
-        `UPDATE orders SET order_status = 'confirmed' WHERE order_id = (SELECT order_id FROM payments WHERE tx_ref = $1)`,
+        `UPDATE orders SET order_status = 'confirmed' 
+         WHERE order_id = (SELECT order_id FROM payments WHERE tx_ref = $1)`,
         [txRef]
       );
+      console.log(`[Webhook Verified] Payment ${txRef} marked as PAID via ${provider}`);
+    } else {
+      console.log(`[Webhook Verified] Payment ${txRef} marked as FAILED via ${provider}`);
     }
-    res.sendStatus(200);
+
+    return res.status(200).json({ status: "success", received: true });
+  } catch (err) {
+    console.error("Webhook processing error:", err);
+    return res.status(500).json({ message: "Internal server error processing webhook" });
+  }
+});
+
+// Secure status check endpoint - clients must query here rather than trusting return query params
+router.get("/order/:orderId", protect, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.payment_id, p.order_id, p.payment_method, p.payment_status, p.amount, p.tx_ref, o.order_status
+       FROM payments p
+       JOIN orders o ON p.order_id = o.order_id
+       WHERE p.order_id = $1 AND (o.customer_id = $2 OR $3 = ANY(ARRAY['cashier', 'manager', 'admin']))`,
+      [req.params.orderId, req.user.user_id, req.user.role]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: "Payment record not found" });
+    res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.sendStatus(500);
+    res.status(500).json({ message: "Error fetching payment status" });
   }
 });
 

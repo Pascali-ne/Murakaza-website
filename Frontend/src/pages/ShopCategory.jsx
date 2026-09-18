@@ -13,7 +13,11 @@ export default function ShopCategory({ category, title, icon }) {
     setLoading(true);
     api
       .get("/products", { params: { category, search } })
-      .then((res) => setProducts(res.data))
+      .then((res) => setProducts(Array.isArray(res.data) ? res.data : []))
+      .catch((err) => {
+        console.warn("Error loading category products:", err.message);
+        setProducts([]);
+      })
       .finally(() => setLoading(false));
   }, [category, search]);
 

@@ -15,5 +15,27 @@
     "otherTitle": "Ukeneye Gucapa, Gufotokopi cyangwa Serivisi za Irembo?",
     "otherSubtitle": "Sura urupapuro rw'Izindi Serivisi kugira ngo uzisabe.",
     "otherBtn": "Reba Izindi Serivisi"
+  },
+  "auth": {
+    "loginTitle": "Murakaza Neza",
+    "loginSubtitle": "Injira kugira ngo ucunge amatumiza n'amahitamo yawe muri MURAKAZA",
+    "email": "Imeli Yawe",
+    "password": "Ijambobanga",
+    "forgotPassword": "Wibagiwe ijambobanga?",
+    "signIn": "Injira",
+    "noAccount": "Nta konti ufite?",
+    "createAccount": "Fungura Konti Nshya"
+  },
+  "banner": {
+    "trusted": "Umufatanyabikorwa Wizewe mu Burezi n'Ubucuruzi mu Rwanda",
+    "headline": "Ibyo Ukeneye Byose mu Kwiga no ku Murimo",
+    "subtitle": "Ibicuruzwa by'abanyeshuri, ibikoresho by'ibiro, gucapa byihuse, no gufashwa muri serivisi za Irembo."
+  },
+  "dashboards": {
+    "cashier": "Ikibaho cya Kashiye",
+    "store": "Ikibaho cy'Ububiko",
+    "manager": "Ikibaho cy'Umuyobozi",
+    "confirmReceived": "Emeza ko Wishyuwe",
+    "reject": "Bihakane"
   }
 }

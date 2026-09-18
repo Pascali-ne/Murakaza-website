@@ -15,5 +15,27 @@
     "otherTitle": "Need Printing, Photocopy or Irembo Services?",
     "otherSubtitle": "Visit our Other Services page to request them.",
     "otherBtn": "View Other Services"
+  },
+  "auth": {
+    "loginTitle": "Welcome Back",
+    "loginSubtitle": "Sign in to manage your MURAKAZA orders and services",
+    "email": "Email Address",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "signIn": "Sign In",
+    "noAccount": "Don't have an account?",
+    "createAccount": "Create Account"
+  },
+  "banner": {
+    "trusted": "Rwanda's Trusted Academic & Business Partner",
+    "headline": "Everything You Need for Learning & Work",
+    "subtitle": "From essential student stationery and modern office machinery to high-speed printing, photocopying, and official Irembo electronic services."
+  },
+  "dashboards": {
+    "cashier": "Cashier Dashboard",
+    "store": "Storekeeper Dashboard",
+    "manager": "Manager Dashboard",
+    "confirmReceived": "Confirm Received",
+    "reject": "Reject"
   }
 }
