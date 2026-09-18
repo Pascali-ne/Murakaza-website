@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../api/api.js";
 import { useCart } from "../context/CartContext.jsx";
+import { formatImageUrl } from "../utils/imageUrl.js";
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -18,19 +19,19 @@ export default function ProductDetails() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 grid md:grid-cols-2 gap-10">
-      <div className="h-80 bg-gray-100 rounded-xl flex items-center justify-center">
+      <div className="h-80 sm:h-96 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm flex items-center justify-center overflow-hidden">
         {product.image_url ? (
           <img
-            src={product.image_url}
+            src={formatImageUrl(product.image_url)}
             alt={product.name}
-            className="h-full w-full object-cover rounded-xl"
+            className="h-full w-full object-cover rounded-2xl"
             onError={(e) => {
               e.currentTarget.onerror = null;
               e.currentTarget.src = "https://placehold.co/600x400/e2e8f0/64748b?text=Murakaza";
             }}
           />
         ) : (
-          <span className="text-gray-400">No Image</span>
+          <span className="text-gray-400 font-medium">No Image Available</span>
         )}
       </div>
 

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext.jsx";
+import { formatImageUrl } from "../utils/imageUrl.js";
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
@@ -10,7 +11,7 @@ export default function ProductCard({ product }) {
         <div className="h-40 bg-gray-100 flex items-center justify-center">
           {product.image_url ? (
             <img
-              src={product.image_url}
+              src={formatImageUrl(product.image_url)}
               alt={product.name}
               className="h-full w-full object-cover"
               onError={(e) => {

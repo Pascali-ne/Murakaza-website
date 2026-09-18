@@ -18,13 +18,36 @@ if(!fs.existsSync(uploadStorage)){
   fs.mkdirSync(uploadStorage, { recursive: true });
 }
 
+function sanitizeProductImage(p) {
+  if (!p || !p.image_url || typeof p.image_url !== "string") return p;
+  let clean = p.image_url.trim();
+  if (clean.includes("onrender.com") || (!clean.includes("localhost") && !clean.includes("127.0.0.1"))) {
+    clean = clean.replace(/^http:\/\//i, "https://");
+  }
+  const uploadsIdx = clean.indexOf("/uploads/");
+  if (uploadsIdx !== -1) {
+    const base = clean.slice(0, uploadsIdx + 9);
+    const rawFilename = clean.slice(uploadsIdx + 9);
+    try {
+      clean = base + encodeURIComponent(decodeURIComponent(rawFilename));
+    } catch {
+      clean = base + encodeURIComponent(rawFilename);
+    }
+  }
+  return { ...p, image_url: clean };
+}
+
 const MulterDiskStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadStorage);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + "-" + file.originalname);
+    const ext = path.extname(file.originalname) || ".jpg";
+    const safeBase = path.basename(file.originalname, ext)
+      .replace(/[^a-zA-Z0-9_-]/g, "_")
+      .slice(0, 30);
+    cb(null, `${uniqueSuffix}-${safeBase}${ext}`);
   },
 });
 
@@ -32,7 +55,7 @@ const upload = multer({
   storage: MulterDiskStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // Limit to 5MB
   fileFilter: function (req, file, cb) {
-    const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!allowedTypes.includes(file.mimetype)) {
       return cb(new Error("Only image files are allowed"));
     }
@@ -41,21 +64,19 @@ const upload = multer({
   },
 });
 
-// POST /api/products/upload-image — admin only, upload a product photo to Cloudinary
-// Send as multipart/form-data with a single field named "image".
-// Returns { url } which can then be saved as a product's image_url.
+// POST /api/products/upload-image — storekeeper/manager/admin product photo upload
 router.post("/upload-image", protect, stockAccess, upload.single("image"), async (req, res) => {
   try {
-
-    // Check if file is uploaded.
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const bind_application_url_to_uploaded_file = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    const host = req.get("host");
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+    const protocol = isLocal ? req.protocol : "https";
+    const fileUrl = `${protocol}://${host}/uploads/${encodeURIComponent(req.file.filename)}`;
 
-    return res.status(200).json({ url: bind_application_url_to_uploaded_file });
-
+    return res.status(200).json({ url: fileUrl });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error uploading image" });
@@ -80,7 +101,7 @@ router.get("/", async (req, res) => {
     query += " ORDER BY created_at DESC";
 
     const result = await pool.query(query, params);
-    res.json(result.rows);
+    res.json(result.rows.map(sanitizeProductImage));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error fetching products" });
@@ -97,7 +118,7 @@ router.get("/low-stock", protect, stockAccess, async (req, res) => {
       [threshold]
     );
     const totals = await pool.query("SELECT COUNT(*) AS total_products, COALESCE(SUM(quantity),0) AS total_units FROM products");
-    res.json({ low_stock_products: lowStock.rows, ...totals.rows[0] });
+    res.json({ ...totals.rows[0], low_stock_products: lowStock.rows.map(sanitizeProductImage) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error fetching stock report" });
@@ -109,7 +130,7 @@ router.get("/:id", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM products WHERE product_id = $1", [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ message: "Product not found" });
-    res.json(result.rows[0]);
+    res.json(sanitizeProductImage(result.rows[0]));
   } catch (err) {
     res.status(500).json({ message: "Error fetching product" });
   }
@@ -119,28 +140,45 @@ router.get("/:id", async (req, res) => {
 router.post("/", protect, stockAccess, async (req, res) => {
   try {
     const { name, category, price, quantity, description, image_url } = req.body;
+    const cleanImageUrl = image_url ? sanitizeProductImage({ image_url }).image_url : null;
     const result = await pool.query(
       `INSERT INTO products (name, category, price, quantity, description, image_url)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [name, category, price, quantity, description, image_url]
+      [name, category, price, quantity, description, cleanImageUrl]
     );
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(sanitizeProductImage(result.rows[0]));
   } catch (err) {
     res.status(500).json({ message: "Error adding product" });
   }
 });
 
+// Auto-repair any legacy unencoded or http image URLs in database
+setTimeout(() => {
+  pool.query("SELECT product_id, image_url FROM products WHERE image_url LIKE 'http://%' OR image_url LIKE '%#%'")
+    .then((res) => {
+      for (const row of res.rows) {
+        const sanitized = sanitizeProductImage(row).image_url;
+        if (sanitized && sanitized !== row.image_url) {
+          pool.query("UPDATE products SET image_url = $1 WHERE product_id = $2", [sanitized, row.product_id])
+            .catch(() => {});
+        }
+      }
+    })
+    .catch(() => {});
+}, 3000);
+
 // PUT /api/products/:id — storekeeper/manager/admin: edit product / update stock
 router.put("/:id", protect, stockAccess, async (req, res) => {
   try {
     const { name, category, price, quantity, description, image_url } = req.body;
+    const cleanImageUrl = image_url ? sanitizeProductImage({ image_url }).image_url : null;
     const result = await pool.query(
       `UPDATE products SET name=$1, category=$2, price=$3, quantity=$4, description=$5, image_url=$6
        WHERE product_id=$7 RETURNING *`,
-      [name, category, price, quantity, description, image_url, req.params.id]
+      [name, category, price, quantity, description, cleanImageUrl, req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: "Product not found" });
-    res.json(result.rows[0]);
+    res.json(sanitizeProductImage(result.rows[0]));
   } catch (err) {
     res.status(500).json({ message: "Error updating product" });
   }

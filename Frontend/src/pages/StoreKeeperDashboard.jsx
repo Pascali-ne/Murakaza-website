@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api/api.js";
-import { Package, AlertTriangle, Boxes, Plus, Edit2, Trash2, Search, Upload, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Package, AlertTriangle, Boxes, Plus, Edit2, Trash2, Search, Upload, RefreshCw, CheckCircle2, Link as LinkIcon, Image as ImageIcon } from "lucide-react";
+import { formatImageUrl } from "../utils/imageUrl.js";
 
 const emptyProduct = {
   name: "",
@@ -21,6 +22,7 @@ export default function StoreKeeperDashboard() {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [imageMode, setImageMode] = useState("file"); // "file" | "url"
 
   const loadProducts = (search = "") => {
     api
@@ -247,9 +249,13 @@ export default function StoreKeeperDashboard() {
                           <td className="py-3.5 px-4 font-semibold text-slate-800 flex items-center gap-3">
                             {p.image_url ? (
                               <img
-                                src={p.image_url}
+                                src={formatImageUrl(p.image_url)}
                                 alt={p.name}
                                 className="w-10 h-10 object-cover rounded-lg border border-slate-100"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = "https://placehold.co/100x100?text=Item";
+                                }}
                               />
                             ) : (
                               <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
@@ -363,32 +369,84 @@ export default function StoreKeeperDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Product Photo</label>
-                <div className="flex items-center gap-3">
-                  {form.image_url ? (
-                    <img
-                      src={form.image_url}
-                      alt="Preview"
-                      className="w-14 h-14 object-cover rounded-xl border border-slate-200"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 border border-slate-200">
-                      <Package className="w-6 h-6" />
-                    </div>
-                  )}
-                  <label className="flex-1 border border-dashed border-slate-300 rounded-xl p-3 text-center cursor-pointer hover:bg-slate-50 transition-colors">
-                    <Upload className="w-4 h-4 text-slate-400 mx-auto mb-1" />
-                    <span className="text-xs font-semibold text-slate-600">
-                      {uploading ? "Uploading..." : form.image_url ? "Change image" : "Upload image file"}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      disabled={uploading}
-                      className="hidden"
-                    />
-                  </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-600">Product Photo</label>
+                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setImageMode("file")}
+                      className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                        imageMode === "file" ? "bg-white text-primary shadow-xs font-bold" : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      Upload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageMode("url")}
+                      className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                        imageMode === "url" ? "bg-white text-primary shadow-xs font-bold" : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      Image URL
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    {form.image_url ? (
+                      <div className="relative group shrink-0">
+                        <img
+                          src={formatImageUrl(form.image_url)}
+                          alt="Preview"
+                          className="w-14 h-14 object-cover rounded-xl border border-slate-200"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "https://placehold.co/100x100?text=Invalid";
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, image_url: "" }))}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-xs cursor-pointer"
+                          title="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 border border-slate-200 shrink-0">
+                        <Package className="w-6 h-6" />
+                      </div>
+                    )}
+
+                    {imageMode === "file" ? (
+                      <label className="flex-1 border border-dashed border-slate-300 rounded-xl p-3 text-center cursor-pointer hover:bg-slate-50 transition-colors">
+                        <Upload className="w-4 h-4 text-slate-400 mx-auto mb-1" />
+                        <span className="text-xs font-semibold text-slate-600">
+                          {uploading ? "Uploading..." : form.image_url ? "Change file" : "Choose file from device"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={uploading}
+                          className="hidden"
+                        />
+                      </label>
+                    ) : (
+                      <div className="flex-1">
+                        <input
+                          name="image_url"
+                          value={form.image_url}
+                          onChange={handleChange}
+                          placeholder="Paste image URL (https://...)"
+                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -456,7 +514,7 @@ export default function StoreKeeperDashboard() {
                     <div className="flex items-center gap-3">
                       {p.image_url ? (
                         <img
-                          src={p.image_url}
+                          src={formatImageUrl(p.image_url)}
                           alt={p.name}
                           className="w-12 h-12 object-cover rounded-xl border border-slate-100 shrink-0"
                           onError={(e) => {

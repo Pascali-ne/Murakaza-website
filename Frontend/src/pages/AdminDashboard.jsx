@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/api.js";
+import { formatImageUrl } from "../utils/imageUrl.js";
 
 const emptyProduct = { name: "", category: "student_supplies", price: "", quantity: "", description: "", image_url: "" };
 
@@ -147,7 +148,15 @@ export default function AdminDashboard() {
               <label className="block text-sm font-semibold text-gray-700 mb-1">Product Image</label>
               <div className="flex items-center gap-3">
                 {form.image_url && (
-                  <img src={form.image_url} alt="Preview" className="w-16 h-16 object-cover rounded-lg border" />
+                  <img
+                    src={formatImageUrl(form.image_url)}
+                    alt="Preview"
+                    className="w-16 h-16 object-cover rounded-lg border"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "https://placehold.co/100x100?text=Item";
+                    }}
+                  />
                 )}
                 <label className="border rounded-lg px-4 py-2 text-sm text-gray-600 cursor-pointer hover:bg-gray-50 flex-1 text-center">
                   {uploading ? "Uploading..." : form.image_url ? "Change photo" : "Upload photo"}
@@ -185,7 +194,15 @@ export default function AdminDashboard() {
                   <div key={p.product_id} className="bg-white rounded-xl shadow p-4 flex justify-between items-center gap-3">
                     <div className="flex items-center gap-3">
                       {p.image_url && (
-                        <img src={p.image_url} alt={p.name} className="w-12 h-12 object-cover rounded-lg border" />
+                        <img
+                          src={formatImageUrl(p.image_url)}
+                          alt={p.name}
+                          className="w-12 h-12 object-cover rounded-lg border"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "https://placehold.co/100x100?text=Item";
+                          }}
+                        />
                       )}
                       <div>
                         <p className="font-semibold text-gray-800">{p.name}</p>
