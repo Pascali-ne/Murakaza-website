@@ -25,10 +25,6 @@ export default function ProductCard({ product }) {
               src={formatImageUrl(product.image_url)}
               alt={product.name}
               className="h-full w-full object-cover object-center group-hover:scale-108 transition-transform duration-700 ease-out"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = "https://placehold.co/400x300/e2e8f0/64748b?text=Murakaza";
-              }}
             />
           )
         ) : (

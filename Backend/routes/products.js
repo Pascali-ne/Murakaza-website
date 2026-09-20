@@ -21,6 +21,7 @@ if(!fs.existsSync(uploadStorage)){
 function sanitizeProductImage(p) {
   if (!p || !p.image_url || typeof p.image_url !== "string") return p;
   let clean = p.image_url.trim();
+  if (clean.startsWith("data:")) return { ...p, image_url: clean };
   if (clean.includes("onrender.com") || (!clean.includes("localhost") && !clean.includes("127.0.0.1"))) {
     clean = clean.replace(/^http:\/\//i, "https://");
   }

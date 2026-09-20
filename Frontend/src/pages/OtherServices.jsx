@@ -149,8 +149,7 @@ export default function OtherServices() {
                       alt={s.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = "https://placehold.co/600x400/e2e8f0/64748b?text=Murakaza+Service";
+                        e.currentTarget.style.display = 'none';
                       }}
                     />
                   )}

@@ -4,18 +4,19 @@
  */
 export function formatImageUrl(url) {
   if (!url || typeof url !== "string") {
-    return "https://placehold.co/600x400/e2e8f0/64748b?text=Murakaza";
+    return "";
   }
 
   let clean = url.trim();
+  if (!clean) return "";
 
   // If already a Data URI or Blob, return directly
   if (clean.startsWith("data:") || clean.startsWith("blob:")) {
     return clean;
   }
 
-  // Force HTTPS for Render host or non-localhost origins to prevent Mixed Content blocking on Vercel
-  if (clean.includes("onrender.com") || (!clean.includes("localhost") && !clean.includes("127.0.0.1"))) {
+  // Force HTTPS for Render host to prevent Mixed Content blocking on Vercel
+  if (clean.includes("onrender.com")) {
     clean = clean.replace(/^http:\/\//i, "https://");
   }
 

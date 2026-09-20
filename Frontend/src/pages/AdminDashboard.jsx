@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api/api.js";
 import { formatImageUrl, isVideoUrl } from "../utils/imageUrl.js";
+import { fileToDataUrl } from "../utils/imageCompressor.js";
 
 const emptyProduct = { name: "", category: "student_supplies", price: "", quantity: "", description: "", image_url: "" };
 const emptyService = { title: "", description: "", image_url: "", icon: "Printer", price: "" };
@@ -53,14 +54,12 @@ export default function AdminDashboard() {
     setUploadError("");
     setUploading(true);
     try {
-      const data = new FormData();
-      data.append("image", file);
-      const res = await api.post("/products/upload-image", data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setForm((f) => ({ ...f, image_url: res.data.url }));
+      // Compress and convert to Base64 data URL so image is stored directly in PostgreSQL
+      // and will NEVER be lost across Git commits or Render redeploys!
+      const dataUrl = await fileToDataUrl(file);
+      setForm((f) => ({ ...f, image_url: dataUrl }));
     } catch (err) {
-      setUploadError(err.response?.data?.message || "Image upload failed");
+      setUploadError("Image processing failed: " + err.message);
     } finally {
       setUploading(false);
     }
@@ -72,14 +71,11 @@ export default function AdminDashboard() {
     setServiceUploadError("");
     setServiceUploading(true);
     try {
-      const data = new FormData();
-      data.append("image", file);
-      const res = await api.post("/services/upload-image", data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setServiceForm((f) => ({ ...f, image_url: res.data.url }));
+      // Compress and convert to Base64 data URL so image is stored directly in PostgreSQL
+      const dataUrl = await fileToDataUrl(file);
+      setServiceForm((f) => ({ ...f, image_url: dataUrl }));
     } catch (err) {
-      setServiceUploadError(err.response?.data?.message || "Service image upload failed");
+      setServiceUploadError("Service image processing failed: " + err.message);
     } finally {
       setServiceUploading(false);
     }
@@ -219,7 +215,7 @@ export default function AdminDashboard() {
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Product Media (Photo or Video)</label>
               <div className="flex items-center gap-3">
-                {form.image_url && (
+                {form.image_url ? (
                   isVideoUrl(form.image_url) ? (
                     <video
                       src={formatImageUrl(form.image_url)}
@@ -234,17 +230,26 @@ export default function AdminDashboard() {
                       src={formatImageUrl(form.image_url)}
                       alt="Preview"
                       className="w-16 h-16 object-cover rounded-lg border dark:border-slate-700"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = "https://placehold.co/100x100?text=Item";
-                      }}
                     />
                   )
+                ) : (
+                  <div className="w-16 h-16 rounded-lg border border-dashed dark:border-slate-700 flex items-center justify-center text-gray-400 text-xs text-center px-1">
+                    No image
+                  </div>
                 )}
-                <label className="border dark:border-slate-700 rounded-lg px-4 py-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 flex-1 text-center transition-colors">
-                  {uploading ? "Uploading..." : form.image_url ? "Change media" : "Upload photo or video"}
-                  <input type="file" accept="image/*,video/*" onChange={handleImageUpload} disabled={uploading} className="hidden" />
-                </label>
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <label className="border dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 text-center transition-colors">
+                    {uploading ? "Processing..." : "📷 Choose photo from computer (Permanent)"}
+                    <input type="file" accept="image/*,video/*" onChange={handleImageUpload} disabled={uploading} className="hidden" />
+                  </label>
+                  <input
+                    name="image_url"
+                    value={form.image_url}
+                    onChange={handleChange}
+                    placeholder="Or paste permanent image link (https://...)"
+                    className="border dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-white rounded-lg px-3 py-1 text-xs"
+                  />
+                </div>
               </div>
               {uploadError && <p className="text-sm text-red-500 mt-1">{uploadError}</p>}
             </div>
@@ -291,10 +296,6 @@ export default function AdminDashboard() {
                             src={formatImageUrl(p.image_url)}
                             alt={p.name}
                             className="w-12 h-12 object-cover rounded-lg border dark:border-slate-700"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = "https://placehold.co/100x100?text=Item";
-                            }}
                           />
                         )
                       )}
@@ -380,10 +381,6 @@ export default function AdminDashboard() {
                       src={formatImageUrl(serviceForm.image_url)}
                       alt="Service Preview"
                       className="w-16 h-16 object-cover rounded-lg border dark:border-slate-700 shadow-sm"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = "https://placehold.co/100x100?text=Service";
-                      }}
                     />
                   )
                 ) : (
@@ -473,10 +470,6 @@ export default function AdminDashboard() {
                             src={formatImageUrl(s.image_url)}
                             alt={s.title}
                             className="w-14 h-14 object-cover rounded-lg border dark:border-slate-700 shrink-0 shadow-sm"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = "https://placehold.co/100x100?text=Service";
-                            }}
                           />
                         )
                       ) : (

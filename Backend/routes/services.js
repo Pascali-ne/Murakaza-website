@@ -126,6 +126,7 @@ function sanitizeService(s) {
   let cleanUrl = s.image_url;
   if (cleanUrl && typeof cleanUrl === "string") {
     cleanUrl = cleanUrl.trim();
+    if (cleanUrl.startsWith("data:")) return { ...s, image_url: cleanUrl };
     if (cleanUrl.includes("onrender.com") || (!cleanUrl.includes("localhost") && !cleanUrl.includes("127.0.0.1"))) {
       cleanUrl = cleanUrl.replace(/^http:\/\//i, "https://");
     }

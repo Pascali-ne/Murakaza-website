@@ -34,17 +34,17 @@ export default function Navbar() {
 
   return (
     <header className="bg-primary dark:bg-slate-950 text-white sticky top-0 z-50 shadow-md border-b dark:border-slate-800 transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        <Link to="/" className="text-2xl font-bold tracking-wide">MURAKAZA</Link>
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3 xl:gap-5">
+        <Link to="/" className="text-2xl font-bold tracking-wide shrink-0">MURAKAZA</Link>
 
-        <nav className="hidden lg:flex gap-6 font-medium">
+        <nav className="hidden lg:flex items-center gap-3 xl:gap-6 font-medium whitespace-nowrap text-sm xl:text-base">
           {links.map((l) => (
-            <Link key={l.path} to={l.path} className="hover:text-accent transition">{l.name}</Link>
+            <Link key={l.path} to={l.path} className="hover:text-accent transition whitespace-nowrap">{l.name}</Link>
           ))}
         </nav>
 
-        <form onSubmit={handleSearch} className="hidden md:flex items-center bg-white dark:bg-slate-800 rounded-full px-3 py-1 flex-1 max-w-sm border border-transparent dark:border-slate-700 transition-colors">
-          <Search size={18} className="text-gray-500 dark:text-gray-400" />
+        <form onSubmit={handleSearch} className="hidden md:flex items-center bg-white dark:bg-slate-800 rounded-full px-3 py-1.5 flex-1 max-w-xs xl:max-w-sm border border-transparent dark:border-slate-700 transition-colors">
+          <Search size={18} className="text-gray-500 dark:text-gray-400 shrink-0" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -53,27 +53,21 @@ export default function Navbar() {
           />
         </form>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
           <LanguageSwitcher />
 
-          {/* Choosing Black or White mode on home nav */}
+          {/* Compact Black or White mode toggle that preserves original nav appearance */}
           <button
             type="button"
             onClick={toggleTheme}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/15 hover:bg-white/25 text-white transition-all border border-white/20 shadow-sm cursor-pointer"
-            title={theme === "dark" ? t("nav.whiteMode") : t("nav.blackMode")}
+            className="p-1.5 rounded-full hover:bg-white/20 text-white transition-colors cursor-pointer flex items-center justify-center"
+            title={theme === "dark" ? (t("nav.whiteMode") || "White Mode") : (t("nav.blackMode") || "Black Mode")}
             aria-label="Toggle Black or White Mode"
           >
             {theme === "dark" ? (
-              <>
-                <Sun size={15} className="text-yellow-300" />
-                <span className="hidden sm:inline">{t("nav.whiteMode")}</span>
-              </>
+              <Sun size={20} className="text-yellow-300" />
             ) : (
-              <>
-                <Moon size={15} className="text-slate-200" />
-                <span className="hidden sm:inline">{t("nav.blackMode")}</span>
-              </>
+              <Moon size={20} className="text-slate-200" />
             )}
           </button>
 

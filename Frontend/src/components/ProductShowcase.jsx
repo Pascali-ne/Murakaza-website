@@ -131,7 +131,7 @@ export default function ProductShowcase() {
                 onError={(e) => {
                   e.currentTarget.onerror = null;
                   e.currentTarget.src =
-                    "https://placehold.co/1200x600/1e293b/94a3b8?text=Murakaza";
+                    "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=1920&q=80";
                 }}
               />
             )}

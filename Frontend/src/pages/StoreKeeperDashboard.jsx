@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api/api.js";
 import { formatImageUrl, isVideoUrl } from "../utils/imageUrl.js";
+import { fileToDataUrl } from "../utils/imageCompressor.js";
 
 const emptyProduct = { name: "", category: "student_supplies", price: "", quantity: "", description: "", image_url: "" };
 
@@ -38,14 +39,12 @@ export default function StoreKeeperDashboard() {
     setError("");
     setUploading(true);
     try {
-      const data = new FormData();
-      data.append("image", file);
-      const res = await api.post("/products/upload-image", data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setForm((f) => ({ ...f, image_url: res.data.url }));
+      // Compress and convert to Base64 data URL so image is stored directly in PostgreSQL
+      // and will NEVER be lost across Git commits or Render redeploys!
+      const dataUrl = await fileToDataUrl(file);
+      setForm((f) => ({ ...f, image_url: dataUrl }));
     } catch (err) {
-      setError(err.response?.data?.message || "Image upload failed");
+      setError("Image processing failed: " + err.message);
     } finally {
       setUploading(false);
     }
@@ -162,24 +161,29 @@ export default function StoreKeeperDashboard() {
                       loop
                       muted
                       playsInline
-                      className="w-16 h-16 object-cover rounded-lg border"
+                      className="w-16 h-16 object-cover rounded-lg border shrink-0"
                     />
                   ) : (
                     <img
                       src={formatImageUrl(form.image_url)}
                       alt="Preview"
-                      className="w-16 h-16 object-cover rounded-lg border"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = "https://placehold.co/100x100?text=Item";
-                      }}
+                      className="w-16 h-16 object-cover rounded-lg border shrink-0"
                     />
                   )
                 )}
-                <label className="border rounded-lg px-4 py-2 text-sm text-gray-600 cursor-pointer hover:bg-gray-50 flex-1 text-center">
-                  {uploading ? "Uploading..." : form.image_url ? "Change media" : "Upload photo or video"}
-                  <input type="file" accept="image/*,video/*" onChange={handleImageUpload} disabled={uploading} className="hidden" />
-                </label>
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <label className="border rounded-lg px-3 py-2 text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-50 text-center transition-colors">
+                    {uploading ? "Processing..." : "📷 Choose photo from computer (Permanent)"}
+                    <input type="file" accept="image/*,video/*" onChange={handleImageUpload} disabled={uploading} className="hidden" />
+                  </label>
+                  <input
+                    name="image_url"
+                    value={form.image_url}
+                    onChange={handleChange}
+                    placeholder="Or paste permanent image link (https://...)"
+                    className="border bg-white text-gray-800 rounded-lg px-3 py-1.5 text-xs"
+                  />
+                </div>
               </div>
             </div>
 
@@ -224,11 +228,7 @@ export default function StoreKeeperDashboard() {
                           <img
                             src={formatImageUrl(p.image_url)}
                             alt={p.name}
-                            className="w-12 h-12 object-cover rounded-lg border"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = "https://placehold.co/100x100?text=Item";
-                            }}
+                            className="w-12 h-12 object-cover rounded-lg border shrink-0"
                           />
                         )
                       )}
