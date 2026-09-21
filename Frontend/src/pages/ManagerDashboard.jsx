@@ -7,6 +7,7 @@ import {
   UserPlus,
   ShieldCheck,
   ShieldAlert,
+  Shield,
   Search,
   Filter,
   CheckCircle2,
@@ -20,6 +21,8 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
+  ArrowRightLeft,
+  RotateCcw,
 } from "lucide-react";
 
 const emptyEmployeeForm = {
@@ -31,7 +34,7 @@ const emptyEmployeeForm = {
 };
 
 export default function ManagerDashboard() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, refreshUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "employees" ? "employees" : "overview";
 
@@ -52,6 +55,15 @@ export default function ManagerDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [feedback, setFeedback] = useState(null); // { type: "success" | "error", message: "" }
+
+  // Role transfer & delegation modal state
+  const [roleModal, setRoleModal] = useState({
+    isOpen: false,
+    employee: null,
+    targetRole: "admin",
+    isDelegation: true,
+    submitting: false,
+  });
 
   // Confirmation modal state for deactivation or removal
   const [confirmDialog, setConfirmDialog] = useState({
@@ -192,21 +204,101 @@ export default function ManagerDashboard() {
   const storekeeperCount = employees.filter((e) => e.role === "storekeeper").length;
   const employeeCount = employees.filter((e) => e.role === "employee").length;
 
-  // Role Badge Helper
-  const getRoleBadge = (role) => {
+  const openRoleModal = (emp) => {
+    setRoleModal({
+      isOpen: true,
+      employee: emp,
+      targetRole: emp.role === "admin" ? "manager" : "admin",
+      isDelegation: true,
+      submitting: false,
+    });
+  };
+
+  const handleRoleTransfer = async (e) => {
+    e.preventDefault();
+    if (!roleModal.employee) return;
+    setRoleModal((prev) => ({ ...prev, submitting: true }));
+    setFeedback(null);
+    try {
+      const res = await api.patch(`/employees/${roleModal.employee.user_id}/role`, {
+        role: roleModal.targetRole,
+        is_delegation: roleModal.isDelegation,
+      });
+      setFeedback({ type: "success", message: res.data.message });
+      setRoleModal({ isOpen: false, employee: null, targetRole: "admin", isDelegation: true, submitting: false });
+      loadEmployees();
+      if (refreshUser) refreshUser();
+    } catch (err) {
+      setFeedback({ type: "error", message: err.response?.data?.message || "Failed to update role." });
+    } finally {
+      setRoleModal((prev) => ({ ...prev, submitting: false }));
+    }
+  };
+
+  const handleRevokeRole = async (emp) => {
+    setActionLoadingId(emp.user_id);
+    setFeedback(null);
+    try {
+      const res = await api.patch(`/employees/${emp.user_id}/role`, {
+        revoke: true,
+      });
+      setFeedback({ type: "success", message: res.data.message });
+      loadEmployees();
+      if (refreshUser) refreshUser();
+    } catch (err) {
+      setFeedback({ type: "error", message: err.response?.data?.message || "Failed to revoke access." });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Role Badge Helper with Delegation Indicator
+  const getRoleBadge = (emp) => {
+    const role = typeof emp === "string" ? emp : emp?.role;
+    const delegatedFrom = typeof emp === "object" ? emp?.delegated_from_role : null;
+
+    let badge = null;
     switch (role) {
       case "admin":
-        return <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300">Admin</span>;
+        badge = (
+          <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 inline-flex items-center gap-1">
+            <Shield size={12} />
+            {delegatedFrom ? "Acting Admin" : "Admin"}
+          </span>
+        );
+        break;
       case "manager":
-        return <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">Manager</span>;
+        badge = (
+          <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 inline-flex items-center gap-1">
+            {delegatedFrom ? "Acting Manager" : "Manager"}
+          </span>
+        );
+        break;
       case "cashier":
-        return <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">Cashier</span>;
+        badge = <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">Cashier</span>;
+        break;
       case "storekeeper":
-        return <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">Store Keeper</span>;
+        badge = <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">Store Keeper</span>;
+        break;
+      case "customer":
+        badge = <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">Customer</span>;
+        break;
       case "employee":
       default:
-        return <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">Employee</span>;
+        badge = <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">Employee</span>;
+        break;
     }
+
+    return (
+      <div className="flex flex-col items-start gap-1">
+        {badge}
+        {delegatedFrom && (
+          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/40">
+            <RotateCcw size={10} /> from {delegatedFrom}
+          </span>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -449,7 +541,7 @@ export default function ManagerDashboard() {
 
                           {/* Role */}
                           <td className="py-3.5 px-4">
-                            {getRoleBadge(emp.role)}
+                            {getRoleBadge(emp)}
                           </td>
 
                           {/* Contact Info */}
@@ -491,7 +583,31 @@ export default function ManagerDashboard() {
                           {/* Actions */}
                           <td className="py-3.5 px-4 text-right">
                             {canManage ? (
-                              <div className="flex items-center justify-end gap-2">
+                              <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                {currentUser?.role === "admin" && (
+                                  <>
+                                    {emp.delegated_from_role ? (
+                                      <button
+                                        onClick={() => handleRevokeRole(emp)}
+                                        disabled={actionLoadingId === emp.user_id}
+                                        title={`Revoke delegated access and restore back to ${emp.delegated_from_role}`}
+                                        className="text-xs px-2.5 py-1 rounded font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 dark:text-rose-300 flex items-center gap-1 transition"
+                                      >
+                                        <RotateCcw size={12} />
+                                        <span>{actionLoadingId === emp.user_id ? "Revoking..." : "Revoke"}</span>
+                                      </button>
+                                    ) : null}
+                                    <button
+                                      onClick={() => openRoleModal(emp)}
+                                      disabled={actionLoadingId === emp.user_id}
+                                      title="Transfer or delegate role"
+                                      className="text-xs px-2.5 py-1 rounded font-semibold bg-primary/10 hover:bg-primary/20 text-primary dark:bg-accent/10 dark:hover:bg-accent/20 dark:text-accent flex items-center gap-1 transition"
+                                    >
+                                      <ArrowRightLeft size={12} />
+                                      <span>Transfer</span>
+                                    </button>
+                                  </>
+                                )}
                                 <button
                                   onClick={() => promptToggleStatus(emp)}
                                   disabled={actionLoadingId === emp.user_id}
@@ -756,6 +872,83 @@ export default function ManagerDashboard() {
                 Confirm
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: TRANSFER & DELEGATE ROLE */}
+      {roleModal.isOpen && roleModal.employee && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full p-6 border dark:border-slate-800">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary dark:bg-accent/20 dark:text-accent">
+                <Shield size={22} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
+                  Transfer & Delegate Role
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Target: <strong className="text-gray-700 dark:text-gray-200">{roleModal.employee.name}</strong> ({roleModal.employee.email})
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleRoleTransfer} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Select New Role Assignment *
+                </label>
+                <select
+                  value={roleModal.targetRole}
+                  onChange={(e) => setRoleModal({ ...roleModal, targetRole: e.target.value })}
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="admin">Admin (Full administrative & system control)</option>
+                  <option value="manager">Manager (Staff control, inventory, orders & payment supervisor)</option>
+                  <option value="cashier">Cashier (Inspect & confirm customer MoMo/Airtel payments)</option>
+                  <option value="storekeeper">Store Keeper (Manage inventory & stock levels)</option>
+                  <option value="employee">Employee (General store staff)</option>
+                </select>
+              </div>
+
+              {/* Temporary delegation checkbox */}
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={roleModal.isDelegation}
+                    onChange={(e) => setRoleModal({ ...roleModal, isDelegation: e.target.checked })}
+                    className="mt-0.5 rounded text-primary focus:ring-primary h-4 w-4"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold text-amber-900 dark:text-amber-200 block">
+                      Temporary Delegation (Covering while Admin is away)
+                    </span>
+                    <span className="text-amber-700 dark:text-amber-300 mt-0.5 block leading-relaxed">
+                      Remembers their base role (<strong>{roleModal.employee.role}</strong>) so you can quickly revoke this elevated access with one click when you return.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRoleModal({ isOpen: false, employee: null, targetRole: "admin", isDelegation: true, submitting: false })}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold border dark:border-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={roleModal.submitting}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 text-white disabled:opacity-50 shadow transition flex items-center justify-center gap-2"
+                >
+                  {roleModal.submitting ? "Transferring..." : "Confirm Role Transfer"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

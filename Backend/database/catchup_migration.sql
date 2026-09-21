@@ -48,3 +48,8 @@ EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+
+-- 6. Role delegation and temporary transfer columns
+ALTER TABLE users ADD COLUMN IF NOT EXISTS delegated_from_role VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS delegated_at TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS delegated_by INTEGER REFERENCES users(user_id);

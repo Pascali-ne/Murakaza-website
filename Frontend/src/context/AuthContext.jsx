@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import api from "../api/api.js";
 
 const AuthContext = createContext();
@@ -8,6 +8,30 @@ export const AuthProvider = ({ children }) => {
     const saved = localStorage.getItem("murakaza_user");
     return saved ? JSON.parse(saved) : null;
   });
+
+  const refreshUser = async () => {
+    const token = localStorage.getItem("murakaza_token");
+    if (!token) return null;
+    try {
+      const { data } = await api.get("/users/me");
+      if (data) {
+        localStorage.setItem("murakaza_user", JSON.stringify(data));
+        setUser(data);
+        return data;
+      }
+    } catch (err) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        logout();
+      }
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    if (localStorage.getItem("murakaza_token")) {
+      refreshUser();
+    }
+  }, []);
 
   const login = async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
@@ -32,7 +56,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -15,6 +15,7 @@ const normalizeRole = (role) => {
   if (cleaned === "employee" || cleaned === "staff") return "employee";
   if (cleaned === "manager") return "manager";
   if (cleaned === "admin") return "admin";
+  if (cleaned === "customer") return "customer";
   return null;
 };
 
@@ -25,6 +26,7 @@ router.get("/", protect, requireRole("manager", "admin"), async (req, res) => {
     let query = `
       SELECT user_id, name, email, phone, role, 
              COALESCE(is_active, true) AS is_active, 
+             delegated_from_role, delegated_at, delegated_by,
              created_at
       FROM users 
       WHERE role IN ('cashier', 'storekeeper', 'employee', 'manager', 'admin')
@@ -204,6 +206,127 @@ router.delete("/:id", protect, requireRole("manager", "admin"), async (req, res)
   } catch (err) {
     console.error("Error deleting employee:", err);
     res.status(500).json({ message: "Failed to remove employee: " + err.message });
+  }
+});
+
+// PATCH /api/employees/:id/role — Transfer, delegate, or revoke staff/admin roles (Admin only)
+router.patch("/:id/role", protect, requireRole("admin"), async (req, res) => {
+  try {
+    const targetId = parseInt(req.params.id, 10);
+    if (isNaN(targetId)) return res.status(400).json({ message: "Invalid employee ID" });
+
+    const { role: requestedRole, is_delegation, revoke } = req.body;
+
+    const targetUserRes = await pool.query(
+      `SELECT user_id, name, email, phone, role, 
+              COALESCE(is_active, true) AS is_active, 
+              delegated_from_role, delegated_at, delegated_by 
+       FROM users 
+       WHERE user_id = $1`,
+      [targetId]
+    );
+
+    if (targetUserRes.rows.length === 0) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    const targetUser = targetUserRes.rows[0];
+
+    // Case 1: Revoke delegation (returns to original role)
+    if (revoke) {
+      const restoreRole = targetUser.delegated_from_role || "employee";
+
+      // Safety: Prevent removing last active admin if revoking an admin
+      if (targetUser.role === "admin" && restoreRole !== "admin") {
+        const adminCountRes = await pool.query(
+          "SELECT COUNT(*) FROM users WHERE role = 'admin' AND COALESCE(is_active, true) = true AND user_id != $1",
+          [targetId]
+        );
+        if (parseInt(adminCountRes.rows[0].count, 10) < 1) {
+          return res.status(400).json({
+            message: "Cannot revoke Admin access because this is currently the only active administrator in the system.",
+          });
+        }
+      }
+
+      const updateRes = await pool.query(
+        `UPDATE users 
+         SET role = $1, delegated_from_role = NULL, delegated_at = NULL, delegated_by = NULL 
+         WHERE user_id = $2 
+         RETURNING user_id, name, email, phone, role, is_active, delegated_from_role, delegated_at, delegated_by`,
+        [restoreRole, targetId]
+      );
+
+      return res.json({
+        message: `Delegated access for ${targetUser.name} has been revoked. Role restored to ${restoreRole}.`,
+        employee: updateRes.rows[0],
+      });
+    }
+
+    // Case 2: Transfer / Reassign Role
+    const canonicalRole = normalizeRole(requestedRole);
+    const validRoles = ["admin", "manager", "cashier", "storekeeper", "employee", "customer"];
+
+    if (!canonicalRole || !validRoles.includes(canonicalRole)) {
+      return res.status(400).json({
+        message: `Invalid role selected. Allowed roles: ${validRoles.join(", ")}`,
+      });
+    }
+
+    // Safety: Prevent removing the last active administrator
+    if (targetUser.role === "admin" && canonicalRole !== "admin") {
+      const adminCountRes = await pool.query(
+        "SELECT COUNT(*) FROM users WHERE role = 'admin' AND COALESCE(is_active, true) = true AND user_id != $1",
+        [targetId]
+      );
+      if (parseInt(adminCountRes.rows[0].count, 10) < 1) {
+        return res.status(400).json({
+          message: "Cannot demote the last remaining active Administrator in the system.",
+        });
+      }
+    }
+
+    // If marked as delegation, preserve current base role if not already delegated
+    let newDelegatedFrom = targetUser.delegated_from_role;
+    let newDelegatedAt = targetUser.delegated_at;
+    let newDelegatedBy = targetUser.delegated_by;
+
+    if (is_delegation) {
+      if (!newDelegatedFrom) {
+        newDelegatedFrom = targetUser.role; // e.g. "cashier"
+      }
+      newDelegatedAt = new Date();
+      newDelegatedBy = req.user.user_id;
+    } else {
+      // Direct permanent role change clears delegation
+      newDelegatedFrom = null;
+      newDelegatedAt = null;
+      newDelegatedBy = null;
+    }
+
+    const updateRes = await pool.query(
+      `UPDATE users 
+       SET role = $1, 
+           delegated_from_role = $2, 
+           delegated_at = $3, 
+           delegated_by = $4 
+       WHERE user_id = $5 
+       RETURNING user_id, name, email, phone, role, is_active, delegated_from_role, delegated_at, delegated_by`,
+      [canonicalRole, newDelegatedFrom, newDelegatedAt, newDelegatedBy, targetId]
+    );
+
+    const updatedUser = updateRes.rows[0];
+    const delegationNotice = is_delegation
+      ? ` (Delegated from ${newDelegatedFrom} while Admin is away)`
+      : "";
+
+    res.json({
+      message: `Role for ${updatedUser.name} successfully updated to ${updatedUser.role}${delegationNotice}`,
+      employee: updatedUser,
+    });
+  } catch (err) {
+    console.error("Error transferring employee role:", err);
+    res.status(500).json({ message: "Failed to transfer employee role: " + err.message });
   }
 });
 

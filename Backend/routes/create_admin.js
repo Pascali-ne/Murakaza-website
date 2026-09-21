@@ -59,7 +59,7 @@ const defaultAccounts = [
 
 export default async function createAdmin() {
   try {
-    // Ensure 'employee' enum value exists and is_active column exists in PostgreSQL
+    // Ensure 'employee' enum value exists and delegation/is_active columns exist in PostgreSQL
     try {
       await pool.query(`
         DO $$
@@ -69,9 +69,12 @@ export default async function createAdmin() {
           WHEN duplicate_object THEN null;
         END $$;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS delegated_from_role VARCHAR(50);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS delegated_at TIMESTAMP;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS delegated_by INTEGER REFERENCES users(user_id);
       `);
     } catch (migErr) {
-      console.warn("Schema initialization note for employees:", migErr.message);
+      console.warn("Schema initialization note for employees & delegation:", migErr.message);
     }
 
     for (const acc of defaultAccounts) {

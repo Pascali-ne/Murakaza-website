@@ -1,7 +1,8 @@
 import jwt from "jsonwebtoken";
+import pool from "../config/db.js";
 
-// Checks that a valid login token was sent
-export const protect = (req, res, next) => {
+// Checks that a valid login token was sent and synchronizes role in real-time
+export const protect = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ message: "Not authorized, no token provided" });
@@ -9,7 +10,23 @@ export const protect = (req, res, next) => {
   try {
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // { user_id, role }
+
+    // Look up fresh user details from database to reflect real-time role changes and deactivations
+    const userRes = await pool.query(
+      "SELECT user_id, name, email, phone, role, COALESCE(is_active, true) AS is_active, delegated_from_role FROM users WHERE user_id = $1",
+      [decoded.user_id]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(401).json({ message: "User account not found" });
+    }
+
+    const dbUser = userRes.rows[0];
+    if (dbUser.is_active === false) {
+      return res.status(403).json({ message: "Account has been deactivated. Please contact your administrator." });
+    }
+
+    req.user = dbUser;
     next();
   } catch (err) {
     return res.status(401).json({ message: "Invalid or expired token" });
