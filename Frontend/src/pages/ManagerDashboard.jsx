@@ -303,6 +303,21 @@ export default function ManagerDashboard() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Notice for Temporary Acting Admin */}
+      {currentUser?.delegated_from_role && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 flex items-start gap-3 shadow-sm">
+          <ShieldAlert className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" size={20} />
+          <div>
+            <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
+              Temporary Acting {currentUser.role === "admin" ? "Administrator" : "Manager"} Access Active
+            </h4>
+            <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
+              You are currently covering store workflows while the administrator is away (delegated from your base role: <strong>{currentUser.delegated_from_role}</strong>). You have operational access to store features, but <strong>role transfers and employee role delegations are reserved exclusively for the permanent administrator</strong>.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
@@ -584,7 +599,7 @@ export default function ManagerDashboard() {
                           <td className="py-3.5 px-4 text-right">
                             {canManage ? (
                               <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                                {currentUser?.role === "admin" && (
+                                {currentUser?.role === "admin" && !currentUser?.delegated_from_role && (
                                   <>
                                     {emp.delegated_from_role ? (
                                       <button
@@ -802,7 +817,7 @@ export default function ManagerDashboard() {
                   <option value="cashier">Cashier (Inspects and confirms customer payments)</option>
                   <option value="storekeeper">Store Keeper (Manages product inventory & stock)</option>
                   <option value="employee">Employee (General store & service staff)</option>
-                  {currentUser?.role === "admin" && (
+                  {currentUser?.role === "admin" && !currentUser?.delegated_from_role && (
                     <option value="manager">Manager (High-level dashboard & employee supervisor)</option>
                   )}
                 </select>

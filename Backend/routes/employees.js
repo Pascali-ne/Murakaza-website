@@ -212,6 +212,13 @@ router.delete("/:id", protect, requireRole("manager", "admin"), async (req, res)
 // PATCH /api/employees/:id/role — Transfer, delegate, or revoke staff/admin roles (Admin only)
 router.patch("/:id/role", protect, requireRole("admin"), async (req, res) => {
   try {
+    // Strict Guardrail: Temporary / delegated acting administrators cannot transfer or modify roles
+    if (req.user.delegated_from_role) {
+      return res.status(403).json({
+        message: "Access Denied: As a temporary acting administrator, you cannot transfer or modify roles. Only the permanent administrator has this authority.",
+      });
+    }
+
     const targetId = parseInt(req.params.id, 10);
     if (isNaN(targetId)) return res.status(400).json({ message: "Invalid employee ID" });
 

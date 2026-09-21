@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Shield } from "lucide-react";
 import api from "../api/api.js";
+import { useAuth } from "../context/AuthContext.jsx";
 import { formatImageUrl, isVideoUrl } from "../utils/imageUrl.js";
 import { fileToDataUrl } from "../utils/imageCompressor.js";
 
@@ -9,6 +10,7 @@ const emptyProduct = { name: "", category: "student_supplies", price: "", quanti
 const emptyService = { title: "", description: "", image_url: "", icon: "Printer", price: "" };
 
 export default function AdminDashboard() {
+  const { user: currentUser } = useAuth();
   const [tab, setTab] = useState("overview");
   const [summary, setSummary] = useState(null);
   const [products, setProducts] = useState([]);
@@ -187,28 +189,44 @@ export default function AdminDashboard() {
             <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">RWF {Number(summary.total_revenue).toLocaleString()}</p>
           </div>
 
-          {/* Role Delegation & Staff Control Banner */}
-          <div className="col-span-2 md:col-span-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent dark:from-slate-800 dark:to-slate-800/40 p-5 rounded-2xl border border-primary/20 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="p-3 bg-primary text-white rounded-xl shadow shrink-0">
+          {/* Role Delegation & Staff Control Banner (Permanent Admin only) */}
+          {!currentUser?.delegated_from_role ? (
+            <div className="col-span-2 md:col-span-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent dark:from-slate-800 dark:to-slate-800/40 p-5 rounded-2xl border border-primary/20 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="p-3 bg-primary text-white rounded-xl shadow shrink-0">
+                  <Shield size={24} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">
+                    Role Delegation & Staff Control
+                  </h3>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 max-w-xl leading-relaxed">
+                    Stepping away? Transfer full <strong>Admin</strong> or <strong>Manager</strong> control to any Cashier, Storekeeper, or Employee while you are unavailable. When you return, revoke access instantly with a single click.
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/manager?tab=employees"
+                className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow transition whitespace-nowrap self-start sm:self-auto"
+              >
+                <span>Transfer / Manage Roles ➔</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="col-span-2 md:col-span-3 bg-amber-50 dark:bg-amber-950/40 p-5 rounded-2xl border border-amber-200 dark:border-amber-900/50 flex items-start gap-3.5">
+              <div className="p-3 bg-amber-500 text-white rounded-xl shadow shrink-0">
                 <Shield size={24} />
               </div>
               <div>
                 <h3 className="font-bold text-gray-800 dark:text-gray-100 text-base">
-                  Role Delegation & Staff Control
+                  Acting Administrator Privileges Active
                 </h3>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 max-w-xl leading-relaxed">
-                  Stepping away? Transfer full <strong>Admin</strong> or <strong>Manager</strong> control to any Cashier, Storekeeper, or Employee while you are unavailable. When you return, revoke access instantly with a single click.
+                <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
+                  You have been temporarily delegated administrator access to manage store products, orders, and services while the administrator is away. <strong>Role transfers, staff promotions, and delegations are restricted exclusively to the permanent administrator.</strong>
                 </p>
               </div>
             </div>
-            <Link
-              to="/manager?tab=employees"
-              className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow transition whitespace-nowrap self-start sm:self-auto"
-            >
-              <span>Transfer / Manage Roles ➔</span>
-            </Link>
-          </div>
+          )}
 
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-6 col-span-2 md:col-span-3 border dark:border-slate-700 transition-colors">
             <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">Low Stock Products (below 10)</p>
