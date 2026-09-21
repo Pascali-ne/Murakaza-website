@@ -90,6 +90,9 @@ export default function Navbar() {
                   {(user.role === "manager" || user.role === "admin") && (
                     <Link to="/manager" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">Manager Dashboard</Link>
                   )}
+                  {(user.role === "manager" || user.role === "admin") && (
+                    <Link to="/manager?tab=employees" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">Staff Control</Link>
+                  )}
                   {(user.role === "cashier" || user.role === "manager" || user.role === "admin") && (
                     <Link to="/cashier" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">Cashier Dashboard</Link>
                   )}

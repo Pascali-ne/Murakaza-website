@@ -10,6 +10,7 @@ import serviceRoutes from "./routes/services.js";
 import userRoutes from "./routes/users.js";
 import paymentRoutes from "./routes/payments.js";
 import feedbackRoutes from "./routes/feedback.js";
+import employeeRoutes from "./routes/employees.js";
 import createAdmin from "./routes/create_admin.js";
 
 
@@ -61,6 +62,7 @@ app.use("/api/services", serviceRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/feedback", feedbackRoutes);
+app.use("/api/employees", employeeRoutes);
 
 // Handle multer errors (bad file type, file too large) with a clean JSON response
 app.use((err, req, res, next) => {

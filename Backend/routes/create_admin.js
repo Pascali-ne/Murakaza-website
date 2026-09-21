@@ -48,10 +48,32 @@ const defaultAccounts = [
     password: "Storekeeper@123",
     role: "storekeeper",
   },
+  {
+    name: "Staff Employee",
+    email: "employee@murakaza.com",
+    phone: "0790000005",
+    password: "Employee@123",
+    role: "employee",
+  },
 ];
 
 export default async function createAdmin() {
   try {
+    // Ensure 'employee' enum value exists and is_active column exists in PostgreSQL
+    try {
+      await pool.query(`
+        DO $$
+        BEGIN
+          ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'employee';
+        EXCEPTION
+          WHEN duplicate_object THEN null;
+        END $$;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+      `);
+    } catch (migErr) {
+      console.warn("Schema initialization note for employees:", migErr.message);
+    }
+
     for (const acc of defaultAccounts) {
       const existing = await pool.query("SELECT user_id FROM users WHERE email = $1", [acc.email]);
       if (existing.rows.length === 0) {

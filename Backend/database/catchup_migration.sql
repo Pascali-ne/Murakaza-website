@@ -39,3 +39,12 @@ CREATE TABLE IF NOT EXISTS feedback (
     status feedback_status NOT NULL DEFAULT 'visible',
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- 5. Employee management: employee role & is_active column
+DO $$
+BEGIN
+  ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'employee';
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;

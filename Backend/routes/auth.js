@@ -61,6 +61,10 @@ router.post("/login", async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ message: "Invalid email or password" });
 
+    if (user.is_active === false) {
+      return res.status(403).json({ message: "Your account has been deactivated. Please contact your manager or administrator." });
+    }
+
     const token = createToken(user);
     delete user.password;
     res.json({ user, token });
@@ -126,10 +130,13 @@ router.post("/reset-password/:token", async (req, res) => {
   }
 });
 
-router.post("/create-staff", protect, requireRole("admin"), async (req, res) => {
+router.post("/create-staff", protect, requireRole("manager", "admin"), async (req, res) => {
   try {
     const { name, email, phone, password, role } = req.body;
-    const allowedRoles = ["cashier", "storekeeper", "manager", "admin"];
+    const allowedRoles = req.user.role === "admin"
+      ? ["cashier", "storekeeper", "employee", "manager", "admin"]
+      : ["cashier", "storekeeper", "employee"];
+
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({ message: `Role must be one of: ${allowedRoles.join(", ")}` });
     }
