@@ -141,6 +141,14 @@ export default function ManagerDashboard() {
 
   // Open confirmation for toggle status
   const promptToggleStatus = (emp) => {
+    if (emp.role === "admin" && !emp.delegated_from_role) {
+      setFeedback({ type: "error", message: "Permanent Administrator accounts are protected and cannot be deactivated." });
+      return;
+    }
+    if (currentUser?.delegated_from_role && (emp.role === "admin" || emp.role === "manager")) {
+      setFeedback({ type: "error", message: "Acting administrators cannot deactivate Admin or Manager accounts." });
+      return;
+    }
     setConfirmDialog({
       isOpen: true,
       type: "status",
@@ -150,6 +158,18 @@ export default function ManagerDashboard() {
 
   // Open confirmation for delete
   const promptDelete = (emp) => {
+    if (currentUser?.delegated_from_role) {
+      setFeedback({ type: "error", message: "Acting administrators cannot delete employee accounts. Only the permanent administrator has this authority." });
+      return;
+    }
+    if (emp.role === "admin" && !emp.delegated_from_role) {
+      setFeedback({ type: "error", message: "Permanent Administrator accounts are protected and cannot be deleted." });
+      return;
+    }
+    if (currentUser?.role !== "admin") {
+      setFeedback({ type: "error", message: "Only permanent administrators can delete employee accounts." });
+      return;
+    }
     setConfirmDialog({
       isOpen: true,
       type: "delete",
@@ -529,8 +549,36 @@ export default function ManagerDashboard() {
                   ) : (
                     filteredEmployees.map((emp) => {
                       const isSelf = currentUser?.user_id === emp.user_id;
-                      const isAdmin = emp.role === "admin";
-                      const canManage = !isSelf && !(isAdmin && currentUser?.role !== "admin");
+                      const isPermanentAdmin = currentUser?.role === "admin" && !currentUser?.delegated_from_role;
+                      const isActingAdmin = !!currentUser?.delegated_from_role;
+
+                      const isTargetAdmin = emp.role === "admin";
+                      const isTargetPermanentAdmin = isTargetAdmin && !emp.delegated_from_role;
+                      const isTargetManager = emp.role === "manager";
+
+                      // 1. Role transfer and revoke: strictly for permanent admins, not on oneself
+                      const canTransferRole = isPermanentAdmin && !isSelf;
+                      const canRevokeRole = isPermanentAdmin && !isSelf && !!emp.delegated_from_role;
+
+                      // 2. Status toggle (Deactivate/Activate):
+                      // - Cannot deactivate self
+                      // - Permanent Admin accounts can NEVER be deactivated by anyone ("only admin none can do anything to him")
+                      // - Acting admins cannot deactivate Admin or Manager accounts
+                      // - Managers cannot deactivate Admin accounts
+                      const canToggleStatus =
+                        !isSelf &&
+                        !isTargetPermanentAdmin &&
+                        (isPermanentAdmin ||
+                          (!isActingAdmin && currentUser?.role === "manager" && !isTargetAdmin) ||
+                          (isActingAdmin && !isTargetAdmin && !isTargetManager));
+
+                      // 3. Delete employee:
+                      // - Strictly permanent admin only (acting admins and managers can NEVER delete any staff account)
+                      // - Cannot delete self
+                      // - Cannot delete permanent admins
+                      const canDelete = isPermanentAdmin && !isSelf && !isTargetPermanentAdmin;
+
+                      const hasAnyAction = canTransferRole || canRevokeRole || canToggleStatus || canDelete;
 
                       return (
                         <tr key={emp.user_id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/30 transition-colors">
@@ -597,52 +645,60 @@ export default function ManagerDashboard() {
 
                           {/* Actions */}
                           <td className="py-3.5 px-4 text-right">
-                            {canManage ? (
+                            {hasAnyAction ? (
                               <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                                {currentUser?.role === "admin" && !currentUser?.delegated_from_role && (
-                                  <>
-                                    {emp.delegated_from_role ? (
-                                      <button
-                                        onClick={() => handleRevokeRole(emp)}
-                                        disabled={actionLoadingId === emp.user_id}
-                                        title={`Revoke delegated access and restore back to ${emp.delegated_from_role}`}
-                                        className="text-xs px-2.5 py-1 rounded font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 dark:text-rose-300 flex items-center gap-1 transition"
-                                      >
-                                        <RotateCcw size={12} />
-                                        <span>{actionLoadingId === emp.user_id ? "Revoking..." : "Revoke"}</span>
-                                      </button>
-                                    ) : null}
-                                    <button
-                                      onClick={() => openRoleModal(emp)}
-                                      disabled={actionLoadingId === emp.user_id}
-                                      title="Transfer or delegate role"
-                                      className="text-xs px-2.5 py-1 rounded font-semibold bg-primary/10 hover:bg-primary/20 text-primary dark:bg-accent/10 dark:hover:bg-accent/20 dark:text-accent flex items-center gap-1 transition"
-                                    >
-                                      <ArrowRightLeft size={12} />
-                                      <span>Transfer</span>
-                                    </button>
-                                  </>
+                                {canRevokeRole && (
+                                  <button
+                                    onClick={() => handleRevokeRole(emp)}
+                                    disabled={actionLoadingId === emp.user_id}
+                                    title={`Revoke delegated access and restore back to ${emp.delegated_from_role}`}
+                                    className="text-xs px-2.5 py-1 rounded font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 dark:text-rose-300 flex items-center gap-1 transition"
+                                  >
+                                    <RotateCcw size={12} />
+                                    <span>{actionLoadingId === emp.user_id ? "Revoking..." : "Revoke"}</span>
+                                  </button>
                                 )}
-                                <button
-                                  onClick={() => promptToggleStatus(emp)}
-                                  disabled={actionLoadingId === emp.user_id}
-                                  className={`text-xs px-2.5 py-1 rounded font-semibold transition ${
-                                    emp.is_active !== false
-                                      ? "bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 dark:text-amber-300"
-                                      : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 dark:text-emerald-300"
-                                  }`}
-                                >
-                                  {actionLoadingId === emp.user_id ? "Saving..." : emp.is_active !== false ? "Deactivate" : "Activate"}
-                                </button>
-                                <button
-                                  onClick={() => promptDelete(emp)}
-                                  disabled={actionLoadingId === emp.user_id}
-                                  title="Remove Employee"
-                                  className="text-xs p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
-                                >
-                                  <Trash2 size={15} />
-                                </button>
+                                {canTransferRole && (
+                                  <button
+                                    onClick={() => openRoleModal(emp)}
+                                    disabled={actionLoadingId === emp.user_id}
+                                    title="Transfer or delegate role"
+                                    className="text-xs px-2.5 py-1 rounded font-semibold bg-primary/10 hover:bg-primary/20 text-primary dark:bg-accent/10 dark:hover:bg-accent/20 dark:text-accent flex items-center gap-1 transition"
+                                  >
+                                    <ArrowRightLeft size={12} />
+                                    <span>Transfer</span>
+                                  </button>
+                                )}
+                                {canToggleStatus && (
+                                  <button
+                                    onClick={() => promptToggleStatus(emp)}
+                                    disabled={actionLoadingId === emp.user_id}
+                                    className={`text-xs px-2.5 py-1 rounded font-semibold transition ${
+                                      emp.is_active !== false
+                                        ? "bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 dark:text-amber-300"
+                                        : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 dark:text-emerald-300"
+                                    }`}
+                                  >
+                                    {actionLoadingId === emp.user_id ? "Saving..." : emp.is_active !== false ? "Deactivate" : "Activate"}
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <button
+                                    onClick={() => promptDelete(emp)}
+                                    disabled={actionLoadingId === emp.user_id}
+                                    title="Remove Employee"
+                                    className="text-xs p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                )}
                               </div>
+                            ) : isSelf ? (
+                              <span className="text-xs text-gray-400 italic">You</span>
+                            ) : isTargetPermanentAdmin ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                                Protected (Admin)
+                              </span>
                             ) : (
                               <span className="text-xs text-gray-400 italic">Protected</span>
                             )}

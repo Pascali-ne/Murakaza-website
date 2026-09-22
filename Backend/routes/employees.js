@@ -133,16 +133,26 @@ router.patch("/:id/status", protect, requireRole("manager", "admin"), async (req
       return res.status(400).json({ message: "You cannot deactivate your own account" });
     }
 
-    const targetUserRes = await pool.query("SELECT user_id, name, role, COALESCE(is_active, true) as is_active FROM users WHERE user_id = $1", [targetId]);
+    const targetUserRes = await pool.query("SELECT user_id, name, role, delegated_from_role, COALESCE(is_active, true) as is_active FROM users WHERE user_id = $1", [targetId]);
     if (targetUserRes.rows.length === 0) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
     const targetUser = targetUserRes.rows[0];
 
-    // Safety: Managers cannot alter admin accounts
-    if (targetUser.role === "admin" && req.user.role !== "admin") {
-      return res.status(403).json({ message: "Managers cannot modify Admin accounts" });
+    // Safety: Permanent Admin accounts can NEVER be deactivated by anyone ("only admin none can do anything to him")
+    if (targetUser.role === "admin" && !targetUser.delegated_from_role) {
+      return res.status(403).json({ message: "Permanent Administrator accounts are protected and cannot be deactivated." });
+    }
+
+    // Safety: Acting administrators cannot deactivate Admin or Manager accounts
+    if (req.user.delegated_from_role && (targetUser.role === "admin" || targetUser.role === "manager")) {
+      return res.status(403).json({ message: "Acting administrators cannot deactivate Admin or Manager accounts." });
+    }
+
+    // Safety: Managers cannot alter Admin accounts
+    if (targetUser.role === "admin" && (req.user.role !== "admin" || req.user.delegated_from_role)) {
+      return res.status(403).json({ message: "Only permanent Administrators can modify Admin accounts." });
     }
 
     const newStatus = typeof req.body.is_active === "boolean" ? req.body.is_active : !targetUser.is_active;
@@ -171,21 +181,33 @@ router.delete("/:id", protect, requireRole("manager", "admin"), async (req, res)
     const targetId = parseInt(req.params.id, 10);
     if (isNaN(targetId)) return res.status(400).json({ message: "Invalid employee ID" });
 
-    // Safety: Users cannot delete their own account
+    // Safety 1: Users cannot delete their own account
     if (req.user.user_id === targetId) {
       return res.status(400).json({ message: "You cannot delete your own account" });
     }
 
-    const targetUserRes = await pool.query("SELECT user_id, name, role FROM users WHERE user_id = $1", [targetId]);
+    // Safety 2: Acting administrators cannot delete any employee accounts
+    if (req.user.delegated_from_role) {
+      return res.status(403).json({
+        message: "Access Denied: Acting administrators cannot delete employee accounts. Only the permanent administrator has this authority.",
+      });
+    }
+
+    const targetUserRes = await pool.query("SELECT user_id, name, role, delegated_from_role FROM users WHERE user_id = $1", [targetId]);
     if (targetUserRes.rows.length === 0) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
     const targetUser = targetUserRes.rows[0];
 
-    // Safety: Managers cannot delete admin accounts
-    if (targetUser.role === "admin" && req.user.role !== "admin") {
-      return res.status(403).json({ message: "Managers cannot delete Admin accounts" });
+    // Safety 3: Permanent Admin accounts can NEVER be deleted
+    if (targetUser.role === "admin" && !targetUser.delegated_from_role) {
+      return res.status(403).json({ message: "Permanent Administrator accounts are protected and cannot be deleted." });
+    }
+
+    // Safety 4: Only permanent Admins can delete staff accounts
+    if (req.user.role !== "admin" || req.user.delegated_from_role) {
+      return res.status(403).json({ message: "Only permanent administrators can delete staff accounts." });
     }
 
     try {
