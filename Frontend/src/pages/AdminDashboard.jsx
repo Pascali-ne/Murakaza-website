@@ -5,7 +5,6 @@ import api from "../api/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { formatImageUrl, isVideoUrl } from "../utils/imageUrl.js";
 import { fileToDataUrl } from "../utils/imageCompressor.js";
-import PartnerWorkspaceBanner from "../components/PartnerWorkspaceBanner.jsx";
 
 const CashierDashboard = lazy(() => import("./CashierDashboard.jsx"));
 const StoreKeeperDashboard = lazy(() => import("./StoreKeeperDashboard.jsx"));
@@ -16,7 +15,6 @@ const emptyService = { title: "", description: "", image_url: "", icon: "Printer
 
 export default function AdminDashboard({ isEmbedded = false }) {
   const { user: currentUser } = useAuth();
-  const [activeWorkspace, setActiveWorkspace] = useState("partner");
   const [tab, setTab] = useState("overview");
   const [summary, setSummary] = useState(null);
   const [products, setProducts] = useState([]);
@@ -160,47 +158,44 @@ export default function AdminDashboard({ isEmbedded = false }) {
     loadAll();
   };
 
-  return (
-    <div className={isEmbedded ? "w-full" : "max-w-6xl mx-auto px-4 py-10"}>
-      {/* Partner workspace banner & switcher if user has delegated access */}
-      {currentUser?.delegated_from_role && !isEmbedded && (
-        <PartnerWorkspaceBanner
-          currentUser={currentUser}
-          activeWorkspace={activeWorkspace}
-          setActiveWorkspace={setActiveWorkspace}
-          myTitle={`My ${(currentUser.delegated_from_role || "staff").toUpperCase()} Dashboard`}
-          partnerTitle={`${currentUser.delegated_by_name || "Partner"}'s Admin Dashboard`}
-        />
-      )}
+  const partnerName = currentUser?.delegated_by_name || "Business Partner";
+  const partnerEmail = currentUser?.delegated_by_email;
 
-      {activeWorkspace === "my" && currentUser?.delegated_from_role && !isEmbedded ? (
-        <Suspense fallback={
-          <div className="py-16 text-center text-gray-400 dark:text-gray-500">
-            <RefreshCw size={28} className="animate-spin mx-auto mb-2 opacity-50" />
-            <p>Loading your dashboard...</p>
-          </div>
-        }>
-          {currentUser.delegated_from_role === "cashier" ? (
-            <CashierDashboard isEmbedded={true} />
-          ) : currentUser.delegated_from_role === "storekeeper" ? (
-            <StoreKeeperDashboard isEmbedded={true} />
-          ) : currentUser.delegated_from_role === "manager" ? (
-            <ManagerDashboard isEmbedded={true} />
-          ) : (
-            <div className="p-8 text-center text-gray-500">
-              You are currently viewing the partner's Administrator dashboard.
+  return (
+    <div className={isEmbedded ? "w-full" : "max-w-6xl mx-auto px-4 py-8"}>
+      {/* Title */}
+      {!isEmbedded && (
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-4 border-b dark:border-slate-800">
+          <div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-100 transition-colors">
+                {currentUser?.delegated_from_role
+                  ? `${partnerName}'s Admin Dashboard`
+                  : "Admin Dashboard"}
+              </h1>
+              {currentUser?.delegated_from_role && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-sm">
+                  <Shield size={13} className="text-amber-600 dark:text-amber-400" />
+                  Transferred Access Active
+                </span>
+              )}
             </div>
-          )}
-        </Suspense>
-      ) : (
-        <div>
-          {!isEmbedded && (
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6 transition-colors">
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
               {currentUser?.delegated_from_role
-                ? `${currentUser.delegated_by_name || "Partner"}'s Admin Dashboard`
-                : "Admin Dashboard"}
-            </h1>
+                ? `You are covering store operations on behalf of ${partnerName}${partnerEmail ? ` (${partnerEmail})` : ""}. Access your base ${(currentUser.delegated_from_role || "staff").toUpperCase()} operations down below.`
+                : "Manage store products, service requests, customer orders, and staff roles."}
+            </p>
+          </div>
+          {currentUser?.delegated_from_role && (
+            <a
+              href="#accessed-transfers"
+              className="self-start md:self-auto inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 shadow transition shrink-0"
+            >
+              <span>Jump to Accessed {(currentUser.delegated_from_role || "staff").toUpperCase()} ↓</span>
+            </a>
           )}
+        </div>
+      )}
 
       <div className="flex gap-4 mb-8 border-b dark:border-slate-800">
         {["overview", "products", "services", "orders"].map((t) => (
@@ -621,6 +616,24 @@ export default function AdminDashboard({ isEmbedded = false }) {
           ))}
         </div>
       )}
+
+      {/* Down below: accessed base role workspace if user has delegated access */}
+      {currentUser?.delegated_from_role && !isEmbedded && (
+        <div id="accessed-transfers" className="pt-8 border-t-2 border-dashed border-gray-300 dark:border-slate-700 mt-12 scroll-mt-6">
+          <Suspense fallback={
+            <div className="py-12 text-center text-gray-400 dark:text-gray-500">
+              <RefreshCw size={28} className="animate-spin mx-auto mb-2 opacity-50" />
+              <p>Loading accessed {(currentUser.delegated_from_role || "staff").toUpperCase()} workspace...</p>
+            </div>
+          }>
+            {currentUser.delegated_from_role === "cashier" ? (
+              <CashierDashboard isEmbedded={true} />
+            ) : currentUser.delegated_from_role === "storekeeper" ? (
+              <StoreKeeperDashboard isEmbedded={true} />
+            ) : (
+              <ManagerDashboard isEmbedded={true} />
+            )}
+          </Suspense>
         </div>
       )}
     </div>

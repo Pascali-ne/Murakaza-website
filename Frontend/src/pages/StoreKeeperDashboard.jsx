@@ -3,8 +3,7 @@ import api from "../api/api.js";
 import { formatImageUrl, isVideoUrl } from "../utils/imageUrl.js";
 import { fileToDataUrl } from "../utils/imageCompressor.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import PartnerWorkspaceBanner from "../components/PartnerWorkspaceBanner.jsx";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Shield } from "lucide-react";
 
 const AdminDashboard = lazy(() => import("./AdminDashboard.jsx"));
 const ManagerDashboard = lazy(() => import("./ManagerDashboard.jsx"));
@@ -13,7 +12,6 @@ const emptyProduct = { name: "", category: "student_supplies", price: "", quanti
 
 export default function StoreKeeperDashboard({ isEmbedded = false }) {
   const { user: currentUser } = useAuth();
-  const [activeWorkspace, setActiveWorkspace] = useState("my");
   const [tab, setTab] = useState("stock");
   const [stock, setStock] = useState(null);
   const [products, setProducts] = useState([]);
@@ -92,38 +90,76 @@ export default function StoreKeeperDashboard({ isEmbedded = false }) {
     }
   };
 
+  const isTransferred = Boolean(currentUser?.delegated_from_role);
+  const partnerName = currentUser?.delegated_by_name || "Business Partner";
+  const partnerEmail = currentUser?.delegated_by_email;
+  const grantedRole = (currentUser?.role || "admin").toUpperCase();
+
   return (
-    <div className={isEmbedded ? "w-full" : "max-w-6xl mx-auto px-4 py-10"}>
-      {/* Partner workspace banner & switcher if user has delegated access */}
-      {currentUser?.delegated_from_role && !isEmbedded && (
-        <PartnerWorkspaceBanner
-          currentUser={currentUser}
-          activeWorkspace={activeWorkspace}
-          setActiveWorkspace={setActiveWorkspace}
-          myTitle="My Storekeeper Dashboard"
-          partnerTitle={`${currentUser.delegated_by_name || "Partner"}'s ${(currentUser.role || "admin").toUpperCase()} Dashboard`}
-        />
+    <div className={isEmbedded ? "w-full" : "max-w-6xl mx-auto px-4 py-8"}>
+      {/* 1. Title & Partner notice */}
+      {isTransferred && !isEmbedded && (
+        <div className="mb-8 p-5 bg-gradient-to-r from-amber-500/10 via-primary/10 to-amber-500/5 dark:from-amber-950/40 dark:via-slate-800 dark:to-slate-800/60 rounded-2xl border border-amber-300/40 dark:border-amber-700/50 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-3 bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-xl shadow shrink-0">
+              <Shield size={24} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-100">
+                  {partnerName}'s {grantedRole} Dashboard
+                </h1>
+                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 shadow-sm">
+                  Transferred Access Active
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1 max-w-2xl leading-relaxed">
+                You are operating with full delegated access from <strong className="text-gray-900 dark:text-white font-semibold">{partnerName}</strong>{partnerEmail && ` (${partnerEmail})`}. His store operations are active below, and down below you can verify store inventory.
+              </p>
+            </div>
+          </div>
+          <a
+            href="#accessed-transfers"
+            className="self-start md:self-auto inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 shadow transition shrink-0"
+          >
+            <span>Jump to Accessed Inventory ↓</span>
+          </a>
+        </div>
       )}
 
-      {activeWorkspace === "partner" && currentUser?.delegated_from_role && !isEmbedded ? (
-        <Suspense fallback={
-          <div className="py-16 text-center text-gray-400 dark:text-gray-500">
-            <RefreshCw size={28} className="animate-spin mx-auto mb-2 opacity-50" />
-            <p>Loading partner dashboard...</p>
-          </div>
-        }>
-          {currentUser.role === "manager" ? (
-            <ManagerDashboard isEmbedded={true} />
-          ) : (
-            <AdminDashboard isEmbedded={true} />
-          )}
-        </Suspense>
-      ) : (
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Storekeeper Dashboard</h1>
-          <p className="text-gray-500 dark:text-gray-400 mb-6">Verify stock levels, and add or remove products.</p>
+      {/* 2. His Dashboard */}
+      {isTransferred && !isEmbedded && (
+        <div className="mb-14">
+          <Suspense fallback={
+            <div className="py-14 text-center text-gray-400 dark:text-gray-500">
+              <RefreshCw size={28} className="animate-spin mx-auto mb-2 opacity-50" />
+              <p>Loading {partnerName}'s store dashboard...</p>
+            </div>
+          }>
+            {currentUser.role === "manager" ? (
+              <ManagerDashboard isEmbedded={true} />
+            ) : (
+              <AdminDashboard isEmbedded={true} />
+            )}
+          </Suspense>
+        </div>
+      )}
 
-      <div className="flex gap-4 mb-8 border-b">
+      {/* 3. Down below: accessed storekeeper section */}
+      <div id="accessed-transfers" className={isTransferred && !isEmbedded ? "pt-8 border-t-2 border-dashed border-gray-300 dark:border-slate-700 scroll-mt-6" : ""}>
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+            <span>{isTransferred ? "Accessed Storekeeper Inventory & Stock" : "Storekeeper Dashboard"}</span>
+            {isTransferred && (
+              <span className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-2.5 py-0.5 rounded-full font-semibold">
+                Storekeeper Role
+              </span>
+            )}
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">Verify stock levels, and add or remove products.</p>
+        </div>
+
+        <div className="flex gap-4 mb-8 border-b dark:border-slate-800">
         {["stock", "products"].map((t) => (
           <button
             key={t}
@@ -282,8 +318,7 @@ export default function StoreKeeperDashboard({ isEmbedded = false }) {
           </div>
         </div>
       )}
-        </div>
-      )}
     </div>
-  );
+  </div>
+);
 }
