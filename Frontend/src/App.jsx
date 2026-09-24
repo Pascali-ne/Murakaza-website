@@ -12,18 +12,20 @@ import ProductDetails from "./pages/ProductDetails.jsx";
 import Cart from "./pages/Cart.jsx";
 import Checkout from "./pages/Checkout.jsx";
 import Login from "./pages/Login.jsx";
+import { lazy, Suspense } from "react";
 import Register from "./pages/Register.jsx";
 import Profile from "./pages/Profile.jsx";
 import Contact from "./pages/Contact.jsx";
 import About from "./pages/About.jsx";
-import AdminDashboard from "./pages/AdminDashboard.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import FeedbackModeration from "./pages/FeedbackModeration.jsx";
 import CreateStaffAccount from "./pages/CreateStaffAccount.jsx";
-import CashierDashboard from "./pages/CashierDashboard.jsx";
-import StoreKeeperDashboard from "./pages/StoreKeeperDashboard.jsx";
-import ManagerDashboard from "./pages/ManagerDashboard.jsx";
+
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
+const CashierDashboard = lazy(() => import("./pages/CashierDashboard.jsx"));
+const StoreKeeperDashboard = lazy(() => import("./pages/StoreKeeperDashboard.jsx"));
+const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard.jsx"));
 
 export default function App() {
   useIdleTimeout();
@@ -45,14 +47,14 @@ export default function App() {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute adminOnly><Suspense fallback={<div className="p-10 text-center text-gray-400">Loading dashboard...</div>}><AdminDashboard /></Suspense></ProtectedRoute>} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/admin/feedback" element={<ProtectedRoute roles={["manager", "admin"]}><FeedbackModeration /></ProtectedRoute>} />
           <Route path="/admin/create-staff" element={<ProtectedRoute roles={["admin"]}><CreateStaffAccount /></ProtectedRoute>} />
-          <Route path="/cashier" element={<ProtectedRoute roles={["cashier", "manager", "admin"]}><CashierDashboard /></ProtectedRoute>} />
-          <Route path="/storekeeper" element={<ProtectedRoute roles={["storekeeper", "manager", "admin"]}><StoreKeeperDashboard /></ProtectedRoute>} />
-          <Route path="/manager" element={<ProtectedRoute roles={["manager", "admin"]}><ManagerDashboard /></ProtectedRoute>} />
+          <Route path="/cashier" element={<ProtectedRoute roles={["cashier", "manager", "admin"]}><Suspense fallback={<div className="p-10 text-center text-gray-400">Loading dashboard...</div>}><CashierDashboard /></Suspense></ProtectedRoute>} />
+          <Route path="/storekeeper" element={<ProtectedRoute roles={["storekeeper", "manager", "admin"]}><Suspense fallback={<div className="p-10 text-center text-gray-400">Loading dashboard...</div>}><StoreKeeperDashboard /></Suspense></ProtectedRoute>} />
+          <Route path="/manager" element={<ProtectedRoute roles={["manager", "admin"]}><Suspense fallback={<div className="p-10 text-center text-gray-400">Loading dashboard...</div>}><ManagerDashboard /></Suspense></ProtectedRoute>} />
         </Routes>
       </main>
       <Footer />

@@ -1,11 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import api from "../api/api.js";
 import { formatImageUrl, isVideoUrl } from "../utils/imageUrl.js";
 import { fileToDataUrl } from "../utils/imageCompressor.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import PartnerWorkspaceBanner from "../components/PartnerWorkspaceBanner.jsx";
+import { RefreshCw } from "lucide-react";
+
+const AdminDashboard = lazy(() => import("./AdminDashboard.jsx"));
+const ManagerDashboard = lazy(() => import("./ManagerDashboard.jsx"));
 
 const emptyProduct = { name: "", category: "student_supplies", price: "", quantity: "", description: "", image_url: "" };
 
-export default function StoreKeeperDashboard() {
+export default function StoreKeeperDashboard({ isEmbedded = false }) {
+  const { user: currentUser } = useAuth();
+  const [activeWorkspace, setActiveWorkspace] = useState("my");
   const [tab, setTab] = useState("stock");
   const [stock, setStock] = useState(null);
   const [products, setProducts] = useState([]);
@@ -85,9 +93,35 @@ export default function StoreKeeperDashboard() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">Storekeeper Dashboard</h1>
-      <p className="text-gray-500 mb-6">Verify stock levels, and add or remove products.</p>
+    <div className={isEmbedded ? "w-full" : "max-w-6xl mx-auto px-4 py-10"}>
+      {/* Partner workspace banner & switcher if user has delegated access */}
+      {currentUser?.delegated_from_role && !isEmbedded && (
+        <PartnerWorkspaceBanner
+          currentUser={currentUser}
+          activeWorkspace={activeWorkspace}
+          setActiveWorkspace={setActiveWorkspace}
+          myTitle="My Storekeeper Dashboard"
+          partnerTitle={`${currentUser.delegated_by_name || "Partner"}'s ${(currentUser.role || "admin").toUpperCase()} Dashboard`}
+        />
+      )}
+
+      {activeWorkspace === "partner" && currentUser?.delegated_from_role && !isEmbedded ? (
+        <Suspense fallback={
+          <div className="py-16 text-center text-gray-400 dark:text-gray-500">
+            <RefreshCw size={28} className="animate-spin mx-auto mb-2 opacity-50" />
+            <p>Loading partner dashboard...</p>
+          </div>
+        }>
+          {currentUser.role === "manager" ? (
+            <ManagerDashboard isEmbedded={true} />
+          ) : (
+            <AdminDashboard isEmbedded={true} />
+          )}
+        </Suspense>
+      ) : (
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">Storekeeper Dashboard</h1>
+          <p className="text-gray-500 dark:text-gray-400 mb-6">Verify stock levels, and add or remove products.</p>
 
       <div className="flex gap-4 mb-8 border-b">
         {["stock", "products"].map((t) => (
@@ -246,6 +280,8 @@ export default function StoreKeeperDashboard() {
               )}
             </div>
           </div>
+        </div>
+      )}
         </div>
       )}
     </div>

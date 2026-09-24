@@ -1,16 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
-import { Shield } from "lucide-react";
+import { Shield, RefreshCw } from "lucide-react";
 import api from "../api/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { formatImageUrl, isVideoUrl } from "../utils/imageUrl.js";
 import { fileToDataUrl } from "../utils/imageCompressor.js";
+import PartnerWorkspaceBanner from "../components/PartnerWorkspaceBanner.jsx";
+
+const CashierDashboard = lazy(() => import("./CashierDashboard.jsx"));
+const StoreKeeperDashboard = lazy(() => import("./StoreKeeperDashboard.jsx"));
+const ManagerDashboard = lazy(() => import("./ManagerDashboard.jsx"));
 
 const emptyProduct = { name: "", category: "student_supplies", price: "", quantity: "", description: "", image_url: "" };
 const emptyService = { title: "", description: "", image_url: "", icon: "Printer", price: "" };
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ isEmbedded = false }) {
   const { user: currentUser } = useAuth();
+  const [activeWorkspace, setActiveWorkspace] = useState("partner");
   const [tab, setTab] = useState("overview");
   const [summary, setSummary] = useState(null);
   const [products, setProducts] = useState([]);
@@ -155,8 +161,46 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6 transition-colors">Admin Dashboard</h1>
+    <div className={isEmbedded ? "w-full" : "max-w-6xl mx-auto px-4 py-10"}>
+      {/* Partner workspace banner & switcher if user has delegated access */}
+      {currentUser?.delegated_from_role && !isEmbedded && (
+        <PartnerWorkspaceBanner
+          currentUser={currentUser}
+          activeWorkspace={activeWorkspace}
+          setActiveWorkspace={setActiveWorkspace}
+          myTitle={`My ${(currentUser.delegated_from_role || "staff").toUpperCase()} Dashboard`}
+          partnerTitle={`${currentUser.delegated_by_name || "Partner"}'s Admin Dashboard`}
+        />
+      )}
+
+      {activeWorkspace === "my" && currentUser?.delegated_from_role && !isEmbedded ? (
+        <Suspense fallback={
+          <div className="py-16 text-center text-gray-400 dark:text-gray-500">
+            <RefreshCw size={28} className="animate-spin mx-auto mb-2 opacity-50" />
+            <p>Loading your dashboard...</p>
+          </div>
+        }>
+          {currentUser.delegated_from_role === "cashier" ? (
+            <CashierDashboard isEmbedded={true} />
+          ) : currentUser.delegated_from_role === "storekeeper" ? (
+            <StoreKeeperDashboard isEmbedded={true} />
+          ) : currentUser.delegated_from_role === "manager" ? (
+            <ManagerDashboard isEmbedded={true} />
+          ) : (
+            <div className="p-8 text-center text-gray-500">
+              You are currently viewing the partner's Administrator dashboard.
+            </div>
+          )}
+        </Suspense>
+      ) : (
+        <div>
+          {!isEmbedded && (
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6 transition-colors">
+              {currentUser?.delegated_from_role
+                ? `${currentUser.delegated_by_name || "Partner"}'s Admin Dashboard`
+                : "Admin Dashboard"}
+            </h1>
+          )}
 
       <div className="flex gap-4 mb-8 border-b dark:border-slate-800">
         {["overview", "products", "services", "orders"].map((t) => (
@@ -575,6 +619,8 @@ export default function AdminDashboard() {
               </select>
             </div>
           ))}
+        </div>
+      )}
         </div>
       )}
     </div>

@@ -82,27 +82,56 @@ export default function Navbar() {
 
           {user ? (
             <div className="relative group" onClick={() => setOpen(!open)}>
-              <button className="flex items-center gap-1.5 font-medium"><User size={20} /> {user.name.split(" ")[0]}</button>
+              <button className="flex items-center gap-1.5 font-medium">
+                <User size={20} /> 
+                <span>{user.name.split(" ")[0]}</span>
+                {user.delegated_from_role && (
+                  <span className="text-[10px] bg-amber-400 text-slate-900 font-extrabold px-1.5 py-0.5 rounded-full shadow-sm ml-0.5">
+                    Partner Active
+                  </span>
+                )}
+              </button>
               {open && (
-                <div className="absolute block right-0 mt-2 bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 rounded-lg shadow-xl w-44 border dark:border-slate-800 py-1 z-50">
+                <div className="absolute block right-0 mt-2 bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 rounded-lg shadow-xl w-52 border dark:border-slate-800 py-1 z-50">
                   <Link to="/profile" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">{t("nav.profile")}</Link>
-                  {user.role === "admin" && <Link to="/admin" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">{t("nav.admin")}</Link>}
+
+                  {user.delegated_from_role && (
+                    <div className="px-4 py-2 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs border-y border-amber-200 dark:border-amber-900/50">
+                      <div className="font-bold flex items-center gap-1">
+                        <span>🤝 Partner Added:</span>
+                        <span className="uppercase text-[10px] bg-amber-200 dark:bg-amber-800 px-1 py-0.5 rounded font-extrabold">{user.role}</span>
+                      </div>
+                      <div className="text-[10px] text-amber-700 dark:text-amber-400/90 mt-0.5 truncate">
+                        By {user.delegated_by_name || "Partner"}
+                      </div>
+                    </div>
+                  )}
+
+                  {user.role === "admin" && (
+                    <Link to="/admin" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 font-medium">
+                      {user.delegated_from_role ? "👑 Partner Admin Dashboard" : t("nav.admin")}
+                    </Link>
+                  )}
                   {(user.role === "manager" || user.role === "admin") && (
                     <Link to="/manager" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">Manager Dashboard</Link>
                   )}
                   {(user.role === "manager" || user.role === "admin") && (
                     <Link to="/manager?tab=employees" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">Staff Control</Link>
                   )}
-                  {(user.role === "cashier" || user.role === "manager" || user.role === "admin") && (
-                    <Link to="/cashier" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">Cashier Dashboard</Link>
+                  {(user.role === "cashier" || user.role === "manager" || user.role === "admin" || user.delegated_from_role === "cashier") && (
+                    <Link to="/cashier" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">
+                      {user.delegated_from_role === "cashier" ? "💳 My Cashier Dashboard" : "Cashier Dashboard"}
+                    </Link>
                   )}
-                  {(user.role === "storekeeper" || user.role === "manager" || user.role === "admin") && (
-                    <Link to="/storekeeper" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">Store Dashboard</Link>
+                  {(user.role === "storekeeper" || user.role === "manager" || user.role === "admin" || user.delegated_from_role === "storekeeper") && (
+                    <Link to="/storekeeper" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">
+                      {user.delegated_from_role === "storekeeper" ? "📦 My Store Dashboard" : "Store Dashboard"}
+                    </Link>
                   )}
                   {(user.role === "manager" || user.role === "admin") && (
                     <Link to="/admin/feedback" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">Feedback Moderation</Link>
                   )}
-                  {user.role === "admin" && (
+                  {user.role === "admin" && !user.delegated_from_role && (
                     <Link to="/admin/create-staff" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800">Create Staff Account</Link>
                   )}
                   <button onClick={logout} className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-800 text-red-600 dark:text-red-400">{t("nav.logout")}</button>

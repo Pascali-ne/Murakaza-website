@@ -24,12 +24,15 @@ router.get("/", protect, requireRole("manager", "admin"), async (req, res) => {
   try {
     const { role, search } = req.query;
     let query = `
-      SELECT user_id, name, email, phone, role, 
-             COALESCE(is_active, true) AS is_active, 
-             delegated_from_role, delegated_at, delegated_by,
-             created_at
-      FROM users 
-      WHERE role IN ('cashier', 'storekeeper', 'employee', 'manager', 'admin')
+      SELECT u.user_id, u.name, u.email, u.phone, u.role, 
+             COALESCE(u.is_active, true) AS is_active, 
+             u.delegated_from_role, u.delegated_at, u.delegated_by,
+             u.created_at,
+             CASE WHEN u.delegated_from_role IS NOT NULL THEN COALESCE(p.name, 'Administrator') ELSE NULL END AS delegated_by_name,
+             CASE WHEN u.delegated_from_role IS NOT NULL THEN p.email ELSE NULL END AS delegated_by_email
+      FROM users u
+      LEFT JOIN users p ON u.delegated_by = p.user_id
+      WHERE u.role IN ('cashier', 'storekeeper', 'employee', 'manager', 'admin')
     `;
     const params = [];
 
@@ -37,16 +40,16 @@ router.get("/", protect, requireRole("manager", "admin"), async (req, res) => {
       const canonRole = normalizeRole(role);
       if (canonRole) {
         params.push(canonRole);
-        query += ` AND role = $${params.length}`;
+        query += ` AND u.role = $${params.length}`;
       }
     }
 
     if (search && search.trim()) {
       params.push(`%${search.trim().toLowerCase()}%`);
-      query += ` AND (LOWER(name) LIKE $${params.length} OR LOWER(email) LIKE $${params.length} OR phone LIKE $${params.length})`;
+      query += ` AND (LOWER(u.name) LIKE $${params.length} OR LOWER(u.email) LIKE $${params.length} OR u.phone LIKE $${params.length})`;
     }
 
-    query += ` ORDER BY created_at DESC, user_id DESC`;
+    query += ` ORDER BY u.created_at DESC, u.user_id DESC`;
 
     const result = await pool.query(query, params);
     res.json(result.rows);
@@ -345,6 +348,10 @@ router.patch("/:id/role", protect, requireRole("admin"), async (req, res) => {
     );
 
     const updatedUser = updateRes.rows[0];
+    if (is_delegation) {
+      updatedUser.delegated_by_name = req.user.name;
+      updatedUser.delegated_by_email = req.user.email;
+    }
     const delegationNotice = is_delegation
       ? ` (Delegated from ${newDelegatedFrom} while Admin is away)`
       : "";

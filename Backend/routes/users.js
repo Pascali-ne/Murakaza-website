@@ -7,7 +7,16 @@ const router = express.Router();
 // GET /api/users/me — logged in user's own profile
 router.get("/me", protect, async (req, res) => {
   const result = await pool.query(
-    "SELECT user_id, name, email, phone, role, COALESCE(is_active, true) AS is_active, delegated_from_role, delegated_at FROM users WHERE user_id = $1",
+    `SELECT 
+      u.user_id, u.name, u.email, u.phone, u.role, 
+      COALESCE(u.is_active, true) AS is_active, 
+      u.delegated_from_role, u.delegated_at, u.delegated_by,
+      CASE WHEN u.delegated_from_role IS NOT NULL THEN COALESCE(p.name, 'Administrator') ELSE NULL END AS delegated_by_name,
+      CASE WHEN u.delegated_from_role IS NOT NULL THEN p.email ELSE NULL END AS delegated_by_email,
+      CASE WHEN u.delegated_from_role IS NOT NULL THEN COALESCE(p.role, 'admin') ELSE NULL END AS delegated_by_role
+     FROM users u
+     LEFT JOIN users p ON u.delegated_by = p.user_id
+     WHERE u.user_id = $1`,
     [req.user.user_id]
   );
   res.json(result.rows[0]);

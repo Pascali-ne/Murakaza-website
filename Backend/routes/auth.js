@@ -54,7 +54,17 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    const result = await pool.query(
+      `SELECT 
+        u.*,
+        CASE WHEN u.delegated_from_role IS NOT NULL THEN COALESCE(p.name, 'Administrator') ELSE NULL END AS delegated_by_name,
+        CASE WHEN u.delegated_from_role IS NOT NULL THEN p.email ELSE NULL END AS delegated_by_email,
+        CASE WHEN u.delegated_from_role IS NOT NULL THEN COALESCE(p.role, 'admin') ELSE NULL END AS delegated_by_role
+       FROM users u
+       LEFT JOIN users p ON u.delegated_by = p.user_id
+       WHERE u.email = $1`,
+      [email]
+    );
     if (result.rows.length === 0) return res.status(400).json({ message: "Invalid email or password" });
 
     const user = result.rows[0];

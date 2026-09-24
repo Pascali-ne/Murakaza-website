@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../api/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import PartnerWorkspaceBanner from "../components/PartnerWorkspaceBanner.jsx";
 import {
   Users,
   UserPlus,
@@ -25,6 +26,8 @@ import {
   RotateCcw,
 } from "lucide-react";
 
+const AdminDashboard = lazy(() => import("./AdminDashboard.jsx"));
+
 const emptyEmployeeForm = {
   name: "",
   email: "",
@@ -33,8 +36,9 @@ const emptyEmployeeForm = {
   role: "cashier",
 };
 
-export default function ManagerDashboard() {
+export default function ManagerDashboard({ isEmbedded = false }) {
   const { user: currentUser, refreshUser } = useAuth();
+  const [activeWorkspace, setActiveWorkspace] = useState("my");
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "employees" ? "employees" : "overview";
 
@@ -322,7 +326,29 @@ export default function ManagerDashboard() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className={isEmbedded ? "w-full" : "max-w-6xl mx-auto px-4 py-8"}>
+      {/* Partner workspace banner & switcher if user has delegated access */}
+      {currentUser?.delegated_from_role && !isEmbedded && (
+        <PartnerWorkspaceBanner
+          currentUser={currentUser}
+          activeWorkspace={activeWorkspace}
+          setActiveWorkspace={setActiveWorkspace}
+          myTitle="My Manager Dashboard"
+          partnerTitle={`${currentUser.delegated_by_name || "Partner"}'s ${(currentUser.role || "admin").toUpperCase()} Dashboard`}
+        />
+      )}
+
+      {activeWorkspace === "partner" && currentUser?.delegated_from_role && !isEmbedded ? (
+        <Suspense fallback={
+          <div className="py-16 text-center text-gray-400 dark:text-gray-500">
+            <RefreshCw size={28} className="animate-spin mx-auto mb-2 opacity-50" />
+            <p>Loading partner dashboard...</p>
+          </div>
+        }>
+          <AdminDashboard isEmbedded={true} />
+        </Suspense>
+      ) : (
+        <div>
       {/* Notice for Temporary Acting Admin */}
       {currentUser?.delegated_from_role && (
         <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 flex items-start gap-3 shadow-sm">
@@ -1021,6 +1047,8 @@ export default function ManagerDashboard() {
               </div>
             </form>
           </div>
+        </div>
+      )}
         </div>
       )}
     </div>
